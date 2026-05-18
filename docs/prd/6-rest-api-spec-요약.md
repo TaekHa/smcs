@@ -7,7 +7,7 @@
 | POST   | `/api/auth/login`                       | 로그인 (JWT 발급)             | Public        |
 | POST   | `/api/auth/logout`                      | 로그아웃                      | 인증          |
 | GET    | `/api/me`                               | 내 정보                       | 인증          |
-| GET    | `/api/issues`                           | 이슈 리스트 (페이징, 필터)    | 인증          |
+| GET    | `/api/issues`                           | 이슈 리스트 (페이징, 필터)    | AGENT, ADMIN  |
 | POST   | `/api/issues`                           | 이슈 생성                     | AGENT, ADMIN  |
 | GET    | `/api/issues/{id}`                      | 이슈 상세                     | 인증          |
 | PATCH  | `/api/issues/{id}`                      | 이슈 수정                     | AGENT, ADMIN  |
@@ -26,6 +26,7 @@
 | GET    | `/api/reports/weekly?week=YYYY-Www`     | 주간 보고서 PDF 다운로드      | ADMIN         |
 | GET    | `/api/stats/dashboard`                  | 대시보드 통계 JSON            | 인증          |
 | GET    | `/api/issues/export?format=csv`         | CSV 내보내기                  | ADMIN         |
+| GET    | `/api/users`                            | 활성 사용자 조회 (담당자 필터/Select용) | AGENT, ADMIN  |
 | GET    | `/api/admin/users`                      | 사용자 관리                   | ADMIN         |
 | POST   | `/api/admin/users`                      | 사용자 추가                   | ADMIN         |
 | GET    | `/api/categories?level=1\|2\|3`         | 카테고리(레벨별) 조회 (폼/필터)| 인증          |

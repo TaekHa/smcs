@@ -3,7 +3,6 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { Spin } from 'antd';
 import { LoginView } from './features/auth/LoginView';
 import { RoleRedirect } from './features/home/RoleRedirect';
-import { IssueListView } from './features/issue-list/IssueListView';
 import { ForbiddenView } from './features/error/ForbiddenView';
 import { NotFoundView } from './features/error/NotFoundView';
 import { RequireAuth } from './auth/RequireAuth';
@@ -14,6 +13,9 @@ import { useAuth } from './auth/useAuthStore';
 // architecture §9.5 / Story 1.5 carry-over #3 — heavy feature routes are
 // code-split (RHF+Zod / mobile). Boot-path views stay eager. Named exports
 // are remapped to `default` for React.lazy.
+const IssueListView = lazy(() =>
+  import('./features/issue-list/IssueListView').then((m) => ({ default: m.IssueListView }))
+);
 const IssueFormView = lazy(() =>
   import('./features/issue-form/IssueFormView').then((m) => ({ default: m.IssueFormView }))
 );

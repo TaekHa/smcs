@@ -11,10 +11,11 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        // architecture §9.7 Vendor Splitting — keep the entry chunk small.
+        // architecture §9.7 Vendor Splitting. antd is intentionally NOT a single
+        // forced chunk — Rollup splits it along the import graph so heavy
+        // lazy-route widgets (Table/DatePicker) stay out of the eager payload.
         manualChunks: {
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'antd-vendor': ['antd', '@ant-design/icons'],
           'query-vendor': ['@tanstack/react-query'],
         },
       },
