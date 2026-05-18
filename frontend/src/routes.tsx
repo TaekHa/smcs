@@ -1,16 +1,38 @@
+import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
+import { Spin } from 'antd';
 import { LoginView } from './features/auth/LoginView';
 import { RoleRedirect } from './features/home/RoleRedirect';
 import { IssueListView } from './features/issue-list/IssueListView';
-import { IssueFormView } from './features/issue-form/IssueFormView';
-import { IssueDetailView } from './features/issue-detail/IssueDetailView';
-import { MobileFieldHomeView } from './features/mobile-field/MobileFieldHomeView';
 import { ForbiddenView } from './features/error/ForbiddenView';
 import { NotFoundView } from './features/error/NotFoundView';
 import { RequireAuth } from './auth/RequireAuth';
 import { RequireRole } from './auth/RequireRole';
 import { AppLayout } from './layout/AppLayout';
 import { useAuth } from './auth/useAuthStore';
+
+// architecture §9.5 / Story 1.5 carry-over #3 — heavy feature routes are
+// code-split (RHF+Zod / mobile). Boot-path views stay eager. Named exports
+// are remapped to `default` for React.lazy.
+const IssueFormView = lazy(() =>
+  import('./features/issue-form/IssueFormView').then((m) => ({ default: m.IssueFormView }))
+);
+const IssueDetailView = lazy(() =>
+  import('./features/issue-detail/IssueDetailView').then((m) => ({ default: m.IssueDetailView }))
+);
+const MobileFieldHomeView = lazy(() =>
+  import('./features/mobile-field/MobileFieldHomeView').then((m) => ({
+    default: m.MobileFieldHomeView,
+  }))
+);
+
+function RouteFallback() {
+  return (
+    <div style={{ display: 'flex', minHeight: '60vh', alignItems: 'center', justifyContent: 'center' }}>
+      <Spin size="large" />
+    </div>
+  );
+}
 
 function LoginRoute() {
   const user = useAuth();
@@ -22,6 +44,7 @@ function LoginRoute() {
 
 export function AppRoutes() {
   return (
+    <Suspense fallback={<RouteFallback />}>
     <Routes>
       <Route path="/login" element={<LoginRoute />} />
 
@@ -94,5 +117,6 @@ export function AppRoutes() {
 
       <Route path="*" element={<NotFoundView />} />
     </Routes>
+    </Suspense>
   );
 }
