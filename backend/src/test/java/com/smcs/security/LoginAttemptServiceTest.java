@@ -100,4 +100,22 @@ class LoginAttemptServiceTest {
 		service.recordFailure(user, ip);
 		assertThat(service.isLocked(user, ip)).isTrue();
 	}
+
+	@Test
+	void otherAccountSameIpSuccessDoesNotResetVictimLockout() {
+		String victim = "victim";
+		String attacker = "attacker";
+		String sharedIp = "10.0.0.9";
+		// Victim's username brute-forced to the lockout threshold from a shared IP.
+		for (int i = 0; i < 5; i++) {
+			service.recordFailure(victim, sharedIp);
+		}
+		assertThat(service.isLocked(victim, sharedIp)).isTrue();
+
+		// Attacker logs in successfully with their OWN account from the same IP.
+		// This must NOT reset the victim username's brute-force counter (AC7 bypass).
+		service.recordSuccess(attacker, sharedIp);
+
+		assertThat(service.isLocked(victim, sharedIp)).isTrue();
+	}
 }
