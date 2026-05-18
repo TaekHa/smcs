@@ -22,11 +22,14 @@ public class LoginAttemptService {
 	@Transactional(readOnly = true)
 	public boolean isLocked(String username, String ipAddress) {
 		Timestamp windowStart = Timestamp.from(Instant.now().minus(WINDOW));
+		// Success-reset is scoped to this username's own successes only. Including
+		// `OR ip_address` here let any valid-account holder reset another username's
+		// brute-force counter from a shared IP (NAT/office/VPN) — AC7 lockout bypass.
 		Timestamp lastSuccess = jdbc.queryForObject(
 				"SELECT MAX(attempted_at) FROM login_attempt "
-						+ "WHERE success = TRUE AND (username = ? OR ip_address = ?)",
+						+ "WHERE success = TRUE AND username = ?",
 				Timestamp.class,
-				username, ipAddress);
+				username);
 		Timestamp effectiveStart = (lastSuccess != null && lastSuccess.after(windowStart))
 				? lastSuccess : windowStart;
 		Integer count = jdbc.queryForObject(
