@@ -5,24 +5,22 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.smcs.user.User;
 import com.smcs.user.UserRepository;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.web.FilterChainProxy;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.context.WebApplicationContext;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 @SpringBootTest
+@AutoConfigureMockMvc
 @ActiveProfiles("local")
 @Import(MethodSecurityTest.AdminOnlyTestController.class)
 class MethodSecurityTest {
@@ -42,25 +40,13 @@ class MethodSecurityTest {
 	}
 
 	@Autowired
-	WebApplicationContext context;
-
-	@Autowired
-	FilterChainProxy springSecurityFilterChain;
+	MockMvc mockMvc;
 
 	@Autowired
 	JwtService jwtService;
 
 	@Autowired
 	UserRepository userRepository;
-
-	MockMvc mockMvc;
-
-	@BeforeEach
-	void setup() {
-		mockMvc = MockMvcBuilders.webAppContextSetup(context)
-				.addFilters(springSecurityFilterChain)
-				.build();
-	}
 
 	@Test
 	void agentCannotAccessAdminOnlyEndpoint() throws Exception {

@@ -10,18 +10,17 @@ import com.smcs.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.security.web.FilterChainProxy;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.web.context.WebApplicationContext;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 @SpringBootTest
+@AutoConfigureMockMvc
 @ActiveProfiles("local")
 @TestPropertySource(properties = "smcs.rate-limit.per-user-per-minute=5")
 class RateLimitIntegrationTest {
@@ -41,10 +40,7 @@ class RateLimitIntegrationTest {
 	}
 
 	@Autowired
-	WebApplicationContext context;
-
-	@Autowired
-	FilterChainProxy springSecurityFilterChain;
+	MockMvc mockMvc;
 
 	@Autowired
 	JwtService jwtService;
@@ -52,14 +48,10 @@ class RateLimitIntegrationTest {
 	@Autowired
 	UserRepository userRepository;
 
-	MockMvc mockMvc;
 	String authHeader;
 
 	@BeforeEach
 	void setup() {
-		mockMvc = MockMvcBuilders.webAppContextSetup(context)
-				.addFilters(springSecurityFilterChain)
-				.build();
 		User user = userRepository.findByUsername("agent1").orElseThrow();
 		authHeader = "Bearer " + jwtService.generate(user.getId(), user.getRole()).token();
 	}
