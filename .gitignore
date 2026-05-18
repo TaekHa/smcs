@@ -1,0 +1,37 @@
+# Build outputs
+**/build/
+**/node_modules/
+**/dist/
+**/.gradle/
+**/*.class
+**/*.log
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local secrets — never commit
+**/application-prod.yml.local
+**/application-prod.yml
+.env
+.env.local
+
+# Testcontainers / Docker temp
+**/.testcontainers.properties
+
+# Node
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+
+# Vite
+**/.vite/
+
+# Claude Code local-only state (per-user)
+.claude/settings.local.json

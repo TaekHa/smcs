@@ -1,0 +1,9 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/smcs
+    username: smcs
+    password: smcs
+
+smcs:
+  jwt:
+    secret: ${SMCS_JWT_SECRET:dev-local-jwt-secret-do-not-use-in-prod-32-bytes-required-padding}

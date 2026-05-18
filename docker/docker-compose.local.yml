@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: smcs_postgres_local
+    environment:
+      POSTGRES_DB: smcs
+      POSTGRES_USER: smcs
+      POSTGRES_PASSWORD: smcs
+    ports:
+      - "5432:5432"
+    volumes:
+      - smcs_pg_data_local:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smcs -d smcs"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  smcs_pg_data_local:

@@ -1,0 +1,11 @@
+# Copy to application-prod.yml.local and fill in real values.
+# application-prod.yml.local is git-ignored — NEVER commit it.
+spring:
+  datasource:
+    url: jdbc:postgresql://<prod-db-host>:5432/smcs
+    username: <prod-db-user>
+    password: <prod-db-password>
+
+smcs:
+  jwt:
+    secret: ${SMCS_JWT_SECRET}  # MUST be set via env var (>= 32 bytes). Boot fails if missing.
