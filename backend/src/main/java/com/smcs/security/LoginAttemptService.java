@@ -22,12 +22,19 @@ public class LoginAttemptService {
 	@Transactional(readOnly = true)
 	public boolean isLocked(String username, String ipAddress) {
 		Timestamp windowStart = Timestamp.from(Instant.now().minus(WINDOW));
+		Timestamp lastSuccess = jdbc.queryForObject(
+				"SELECT MAX(attempted_at) FROM login_attempt "
+						+ "WHERE success = TRUE AND (username = ? OR ip_address = ?)",
+				Timestamp.class,
+				username, ipAddress);
+		Timestamp effectiveStart = (lastSuccess != null && lastSuccess.after(windowStart))
+				? lastSuccess : windowStart;
 		Integer count = jdbc.queryForObject(
 				"SELECT COUNT(*) FROM login_attempt "
 						+ "WHERE attempted_at >= ? AND success = FALSE "
 						+ "AND (username = ? OR ip_address = ?)",
 				Integer.class,
-				windowStart, username, ipAddress);
+				effectiveStart, username, ipAddress);
 		return count != null && count >= MAX_FAILURES;
 	}
 

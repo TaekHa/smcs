@@ -102,6 +102,33 @@ class AuthIntegrationTest {
 	}
 
 	@Test
+	void successfulLoginResetsFailureCounter() throws Exception {
+		String wrong = "{\"username\":\"agent1\",\"password\":\"wrong\"}";
+		String correct = "{\"username\":\"agent1\",\"password\":\"dev1234\"}";
+
+		// 4 failures — not yet locked
+		for (int i = 0; i < 4; i++) {
+			mockMvc.perform(post("/api/auth/login")
+					.contentType(MediaType.APPLICATION_JSON).content(wrong))
+					.andExpect(status().isUnauthorized());
+		}
+		// Successful login resets the counter
+		mockMvc.perform(post("/api/auth/login")
+				.contentType(MediaType.APPLICATION_JSON).content(correct))
+				.andExpect(status().isOk());
+		// 5 more failures — without reset the 1st of these would already lock.
+		// With reset, lockout only triggers on the 6th post-success attempt.
+		for (int i = 0; i < 5; i++) {
+			mockMvc.perform(post("/api/auth/login")
+					.contentType(MediaType.APPLICATION_JSON).content(wrong))
+					.andExpect(status().isUnauthorized());
+		}
+		mockMvc.perform(post("/api/auth/login")
+				.contentType(MediaType.APPLICATION_JSON).content(wrong))
+				.andExpect(status().isLocked());
+	}
+
+	@Test
 	void successfulLoginRecordsSuccessRow() throws Exception {
 		MvcResult result = mockMvc.perform(post("/api/auth/login")
 				.contentType(MediaType.APPLICATION_JSON)

@@ -76,4 +76,28 @@ class LoginAttemptServiceTest {
 		}
 		assertThat(service.isLocked(user, ip)).isFalse();
 	}
+
+	@Test
+	void successResetsFailureCounterWithinWindow() {
+		String user = "agent1";
+		String ip = "10.0.0.4";
+		// 4 failures — not yet locked
+		for (int i = 0; i < 4; i++) {
+			service.recordFailure(user, ip);
+		}
+		assertThat(service.isLocked(user, ip)).isFalse();
+
+		// Successful login resets the counter (only post-success fails count)
+		service.recordSuccess(user, ip);
+
+		// 4 more failures — without reset would already be locked
+		for (int i = 0; i < 4; i++) {
+			service.recordFailure(user, ip);
+		}
+		assertThat(service.isLocked(user, ip)).isFalse();
+
+		// 5th post-success failure crosses the threshold
+		service.recordFailure(user, ip);
+		assertThat(service.isLocked(user, ip)).isTrue();
+	}
 }
