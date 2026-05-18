@@ -22,3 +22,6 @@ smcs:
     expiration-seconds: 28800
   rate-limit:
     per-user-per-minute: 300
+  crypto:
+    data-key: ${SMCS_DATA_KEY:}
+    hmac-key: ${SMCS_HMAC_KEY:}

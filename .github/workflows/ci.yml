@@ -35,6 +35,9 @@ jobs:
         working-directory: backend
         env:
           SMCS_JWT_SECRET: ci-jwt-secret-must-be-at-least-32-bytes-long-padding-for-hs512
+          # CI-only test secrets (non-prod). SMCS_DATA_KEY = Base64 of exactly 32 bytes (AES-256).
+          SMCS_DATA_KEY: c21jc0RldkxvY2FsQWVzMjU2S2V5RG9Ob3RVc2VQcmQ=
+          SMCS_HMAC_KEY: ci-hmac-key-do-not-use-in-prod
         run: ./gradlew build --no-daemon
 
       - name: Upload test reports

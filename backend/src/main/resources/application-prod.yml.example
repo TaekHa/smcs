@@ -9,3 +9,6 @@ spring:
 smcs:
   jwt:
     secret: ${SMCS_JWT_SECRET}  # MUST be set via env var (>= 32 bytes). Boot fails if missing.
+  crypto:
+    data-key: ${SMCS_DATA_KEY}  # MUST be set via env var. Base64 of exactly 32 bytes (AES-256). NEVER commit.
+    hmac-key: ${SMCS_HMAC_KEY}  # MUST be set via env var. Separate key from data-key. NEVER commit.
