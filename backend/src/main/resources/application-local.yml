@@ -7,3 +7,7 @@ spring:
 smcs:
   jwt:
     secret: ${SMCS_JWT_SECRET:dev-local-jwt-secret-do-not-use-in-prod-32-bytes-required-padding}
+  crypto:
+    # Local-only dev keys (clearly non-prod). Prod MUST inject via env vars.
+    data-key: ${SMCS_DATA_KEY:c21jc0RldkxvY2FsQWVzMjU2S2V5RG9Ob3RVc2VQcmQ=}
+    hmac-key: ${SMCS_HMAC_KEY:smcs-dev-local-hmac-key-do-not-use-in-prod}

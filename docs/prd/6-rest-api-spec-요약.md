@@ -28,7 +28,8 @@
 | GET    | `/api/issues/export?format=csv`         | CSV 내보내기                  | ADMIN         |
 | GET    | `/api/admin/users`                      | 사용자 관리                   | ADMIN         |
 | POST   | `/api/admin/users`                      | 사용자 추가                   | ADMIN         |
-| GET    | `/api/admin/categories?level=1\|2\|3`   | 카테고리(레벨별) 조회         | ADMIN         |
+| GET    | `/api/categories?level=1\|2\|3`         | 카테고리(레벨별) 조회 (폼/필터)| 인증          |
+| GET    | `/api/admin/categories?level=1\|2\|3`   | 카테고리(레벨별) 관리 조회     | ADMIN         |
 | POST   | `/api/admin/categories`                 | 카테고리 추가/수정            | ADMIN         |
 
 ---
