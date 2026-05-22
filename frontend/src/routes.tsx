@@ -27,6 +27,11 @@ const MobileFieldHomeView = lazy(() =>
     default: m.MobileFieldHomeView,
   }))
 );
+const MobileFieldDetailView = lazy(() =>
+  import('./features/mobile-field/MobileFieldDetailView').then((m) => ({
+    default: m.MobileFieldDetailView,
+  }))
+);
 
 function RouteFallback() {
   return (
@@ -109,13 +114,28 @@ export function AppRoutes() {
         }
       />
 
+      <Route
+        path="/m/issues/:id"
+        element={
+          <RequireAuth>
+            <RequireRole roles={['FIELD', 'ADMIN']}>
+              <AppLayout>
+                <MobileFieldDetailView />
+              </AppLayout>
+            </RequireRole>
+          </RequireAuth>
+        }
+      />
+
       <Route path="/403" element={<ForbiddenView />} />
 
       {/* Future routes (Epic 2~4):
-          /m/issues/:id, /dashboard, /reports, /reports/:kind/:date,
+          /dashboard, /reports, /reports/:kind/:date,
           /notifications, /admin/users, /admin/categories
           NOTE: /issues/:id is RequireAuth-only (no RequireRole) so FIELD assignees
-          can reach it; the backend enforces §6.3 ownership (403 ISSUE_FORBIDDEN). */}
+          can reach it; the backend enforces §6.3 ownership (403 ISSUE_FORBIDDEN).
+          /m/issues/:id is a Story 2.5 placeholder — mobile detail (photo + action)
+          is Story 2.6. */}
 
       <Route path="*" element={<NotFoundView />} />
     </Routes>

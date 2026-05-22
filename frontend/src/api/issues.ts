@@ -18,6 +18,11 @@ export async function createIssue(req: CreateIssueRequest): Promise<IssueRespons
   return res.data;
 }
 
+export async function getMyAssigned(): Promise<IssueSummary[]> {
+  const res = await apiClient.get<IssueSummary[]>('/me/assigned');
+  return res.data;
+}
+
 export async function listIssues(params: IssueListParams): Promise<Page<IssueSummary>> {
   // indexes:null → arrays serialize as repeated `key=a&key=b` (Spring List<> binding)
   const res = await apiClient.get<Page<IssueSummary>>('/issues', {
