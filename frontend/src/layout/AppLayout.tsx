@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Button, Layout, Space, Tag, Typography } from 'antd';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth, useAuthStore } from '../auth/useAuthStore';
+import { NotificationBell } from '../shared/components/NotificationBell';
 import type { Role } from '../types/auth';
 
 const { Header, Content } = Layout;
@@ -54,6 +55,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           </nav>
         </Space>
         <Space>
+          {user && <NotificationBell />}
           {user && (
             <>
               <Text>{user.displayName}</Text>

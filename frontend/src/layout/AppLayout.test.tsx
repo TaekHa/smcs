@@ -1,10 +1,16 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppLayout } from './AppLayout';
 import { useAuthStore } from '../auth/useAuthStore';
 import type { Role, UserSummary } from '../types/auth';
+
+// AppLayout's NotificationBell polls unread-count; stub the hook to avoid network.
+vi.mock('../shared/hooks/useNotifications', () => ({
+  useUnreadCount: () => ({ data: { count: 0 } }),
+}));
 
 function makeUser(role: Role, displayName = 'TestUser'): UserSummary {
   return { id: 1, username: 'u', displayName, role };
@@ -12,20 +18,23 @@ function makeUser(role: Role, displayName = 'TestUser'): UserSummary {
 
 function renderWithRole(role: Role) {
   useAuthStore.setState({ token: 'TOK', user: makeUser(role, '김상담1'), hydrated: true });
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <MemoryRouter initialEntries={['/issues']}>
-      <Routes>
-        <Route
-          path="/issues"
-          element={
-            <AppLayout>
-              <div>Page Content</div>
-            </AppLayout>
-          }
-        />
-        <Route path="/login" element={<div>Login Page</div>} />
-      </Routes>
-    </MemoryRouter>
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={['/issues']}>
+        <Routes>
+          <Route
+            path="/issues"
+            element={
+              <AppLayout>
+                <div>Page Content</div>
+              </AppLayout>
+            }
+          />
+          <Route path="/login" element={<div>Login Page</div>} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>
   );
 }
 

@@ -8,6 +8,7 @@ import com.smcs.issue.InvalidAssigneeException;
 import com.smcs.issue.IssueForbiddenException;
 import com.smcs.issue.IssueNotFoundException;
 import com.smcs.issue.IssueTransitionException;
+import com.smcs.notification.NotificationNotFoundException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.AuthenticationException;
@@ -84,6 +85,12 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ErrorResponse> handleInvalidAssignee(InvalidAssigneeException ex) {
 		return ResponseEntity.status(HttpStatus.BAD_REQUEST)
 				.body(ErrorResponse.of("INVALID_ASSIGNEE", "Assignee must be an active field worker."));
+	}
+
+	@ExceptionHandler(NotificationNotFoundException.class)
+	public ResponseEntity<ErrorResponse> handleNotificationNotFound(NotificationNotFoundException ex) {
+		return ResponseEntity.status(HttpStatus.NOT_FOUND)
+				.body(ErrorResponse.of("NOTIFICATION_NOT_FOUND", "Notification not found."));
 	}
 
 	@ExceptionHandler(Exception.class)

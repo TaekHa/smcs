@@ -3,6 +3,7 @@ package com.smcs.issue;
 import com.smcs.crypto.HmacHasher;
 import com.smcs.issue.dto.CreateIssueRequest;
 import com.smcs.issue.dto.IssueResponse;
+import com.smcs.notification.NotificationService;
 import com.smcs.user.User;
 import com.smcs.user.UserRepository;
 import org.springframework.stereotype.Service;
@@ -16,14 +17,17 @@ public class IssueService {
 	private final HmacHasher hmacHasher;
 	private final UserRepository userRepository;
 	private final IssueAccessGuard accessGuard;
+	private final NotificationService notificationService;
 
 	public IssueService(IssueRepository issueRepository, IssueEventRepository issueEventRepository,
-			HmacHasher hmacHasher, UserRepository userRepository, IssueAccessGuard accessGuard) {
+			HmacHasher hmacHasher, UserRepository userRepository, IssueAccessGuard accessGuard,
+			NotificationService notificationService) {
 		this.issueRepository = issueRepository;
 		this.issueEventRepository = issueEventRepository;
 		this.hmacHasher = hmacHasher;
 		this.userRepository = userRepository;
 		this.accessGuard = accessGuard;
+		this.notificationService = notificationService;
 	}
 
 	/**
@@ -69,6 +73,7 @@ public class IssueService {
 		issueRepository.save(issue);
 		issueEventRepository.save(new IssueEvent(
 				issueId, actorId, IssueEventType.ASSIGNED, from.name(), issue.getStatus().name()));
+		notificationService.onAssigned(issue, actorId);
 	}
 
 	/**
@@ -87,5 +92,6 @@ public class IssueService {
 		IssueEventType eventType = to == IssueStatus.DONE
 				? IssueEventType.RESOLVED : IssueEventType.STATUS_CHANGED;
 		issueEventRepository.save(new IssueEvent(issueId, actorId, eventType, from.name(), to.name()));
+		notificationService.onStatusChanged(issue, actorId, to);
 	}
 }
