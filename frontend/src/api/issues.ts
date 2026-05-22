@@ -1,6 +1,7 @@
 import { apiClient } from './client';
 import type {
   AddCommentRequest,
+  AssignRequest,
   Comment,
   CreateIssueRequest,
   IssueActivity,
@@ -9,6 +10,7 @@ import type {
   IssueListParams,
   IssueSummary,
   Page,
+  TransitionRequest,
 } from '../types/issue';
 
 export async function createIssue(req: CreateIssueRequest): Promise<IssueResponse> {
@@ -37,5 +39,15 @@ export async function addComment(id: number, req: AddCommentRequest): Promise<Co
 
 export async function listIssueEvents(id: number): Promise<IssueActivity[]> {
   const res = await apiClient.get<IssueActivity[]>(`/issues/${id}/events`);
+  return res.data;
+}
+
+export async function assignIssue(id: number, req: AssignRequest): Promise<IssueDetail> {
+  const res = await apiClient.post<IssueDetail>(`/issues/${id}/assign`, req);
+  return res.data;
+}
+
+export async function transitionIssue(id: number, req: TransitionRequest): Promise<IssueDetail> {
+  const res = await apiClient.post<IssueDetail>(`/issues/${id}/transition`, req);
   return res.data;
 }

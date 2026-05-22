@@ -115,6 +115,17 @@ export interface AddCommentRequest {
   body: string;
 }
 
+// ── Story 2.4: assignment / transition ─────────────────────────────────────
+
+export interface AssignRequest {
+  assigneeId: number;
+}
+
+export interface TransitionRequest {
+  to: IssueStatus;
+  reason?: string;
+}
+
 export interface IssueListParams {
   page?: number;
   size?: number;

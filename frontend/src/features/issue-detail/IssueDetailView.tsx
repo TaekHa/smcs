@@ -16,11 +16,19 @@ import {
 import { isAxiosError } from 'axios';
 import dayjs from 'dayjs';
 import { useParams } from 'react-router-dom';
-import { useIssue, useIssueEvents, useAddComment } from '../../shared/hooks/useIssue';
+import {
+  useIssue,
+  useIssueEvents,
+  useAddComment,
+  useAssignIssue,
+  useTransitionIssue,
+} from '../../shared/hooks/useIssue';
 import { PriorityBadge } from '../../shared/components/PriorityBadge';
 import { StatusBadge } from '../../shared/components/StatusBadge';
+import { UserSelect } from '../../shared/components/UserSelect';
 import { ForbiddenView } from '../error/ForbiddenView';
-import type { CommentKind, IssueEventType } from '../../types/issue';
+import { useAuth } from '../../auth/useAuthStore';
+import type { CommentKind, IssueEventType, IssueStatus } from '../../types/issue';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -28,6 +36,20 @@ const KIND_LABELS: Record<CommentKind, string> = {
   NOTE: '메모',
   FIELD_ACTION: '현장 조치',
   SYSTEM: '시스템',
+};
+
+const STATUS_LABELS: Record<IssueStatus, string> = {
+  NEW: '신규',
+  ASSIGNED: '배정',
+  IN_PROGRESS: '진행중',
+  DONE: '완료',
+  VERIFIED: '검수',
+};
+
+/** Forward transitions exposed on the desktop detail (Story 2.4; mirrors backend IssueStatus). */
+const NEXT_STATES: Partial<Record<IssueStatus, IssueStatus[]>> = {
+  ASSIGNED: ['IN_PROGRESS'],
+  IN_PROGRESS: ['DONE'],
 };
 
 const EVENT_LABELS: Record<IssueEventType, string> = {
@@ -49,7 +71,14 @@ export function IssueDetailView() {
   const { data: issue, isLoading, isError, error } = useIssue(issueId);
   const events = useIssueEvents(issueId);
   const addComment = useAddComment(issueId);
+  const assign = useAssignIssue(issueId);
+  const transition = useTransitionIssue(issueId);
+  const currentUser = useAuth();
   const [body, setBody] = useState('');
+  const [assigneeId, setAssigneeId] = useState<number | undefined>();
+
+  // §6.3: only AGENT/ADMIN manage assignment/transition from the desktop detail (Deviation #8).
+  const canManage = currentUser?.role === 'AGENT' || currentUser?.role === 'ADMIN';
 
   // AC6: non-accessible users (FIELD on unassigned issue) get backend 403 → Forbidden.
   if (isError && isAxiosError(error) && error.response?.status === 403) {
@@ -106,6 +135,46 @@ export function IssueDetailView() {
           <Descriptions.Item label="발신자 전화">{issue.callerPhone}</Descriptions.Item>
         )}
       </Descriptions>
+
+      {/* AC1/AC2/AC3: assignment + transition controls — AGENT/ADMIN only */}
+      {canManage && (
+        <>
+          <section aria-label="이슈 관리" style={{ marginBottom: 16 }}>
+            <Space wrap align="center">
+              <Text strong>담당자 배정:</Text>
+              <UserSelect
+                value={assigneeId}
+                onChange={setAssigneeId}
+                filter={{ roles: ['FIELD'] }}
+                placeholder="현장 담당자 선택"
+              />
+              <Button
+                onClick={() => assigneeId && assign.mutate({ assigneeId })}
+                loading={assign.isPending}
+                disabled={!assigneeId}
+              >
+                배정
+              </Button>
+              {(NEXT_STATES[issue.status] ?? []).length > 0 && (
+                <Text strong style={{ marginLeft: 16 }}>
+                  상태 변경:
+                </Text>
+              )}
+              {(NEXT_STATES[issue.status] ?? []).map((next) => (
+                <Button
+                  key={next}
+                  type="primary"
+                  onClick={() => transition.mutate({ to: next })}
+                  loading={transition.isPending}
+                >
+                  {STATUS_LABELS[next]}(으)로 변경
+                </Button>
+              ))}
+            </Space>
+          </section>
+          <Divider />
+        </>
+      )}
 
       <Title level={5}>상세 내용</Title>
       {/* React escapes by default; no dangerouslySetInnerHTML (§6.9 XSS) */}

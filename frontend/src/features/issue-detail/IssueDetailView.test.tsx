@@ -9,9 +9,22 @@ vi.mock('../../api/issues', () => ({
   getIssue: vi.fn(),
   listIssueEvents: vi.fn(),
   addComment: vi.fn(),
+  assignIssue: vi.fn(),
+  transitionIssue: vi.fn(),
 }));
 
-import { getIssue, listIssueEvents, addComment } from '../../api/issues';
+// useAuth gates the management controls; default = no user (controls hidden).
+const useAuthMock = vi.fn();
+vi.mock('../../auth/useAuthStore', () => ({ useAuth: () => useAuthMock() }));
+
+// UserSelect has its own test; stub it so the assign flow is unit-isolated.
+vi.mock('../../shared/components/UserSelect', () => ({
+  UserSelect: ({ onChange }: { onChange: (id: number) => void }) => (
+    <button onClick={() => onChange(2)}>mock-select-field</button>
+  ),
+}));
+
+import { getIssue, listIssueEvents, addComment, assignIssue, transitionIssue } from '../../api/issues';
 import { IssueDetailView } from './IssueDetailView';
 
 const baseIssue: IssueDetail = {
@@ -68,6 +81,10 @@ describe('IssueDetailView', () => {
     vi.mocked(getIssue).mockReset();
     vi.mocked(listIssueEvents).mockReset();
     vi.mocked(addComment).mockReset();
+    vi.mocked(assignIssue).mockReset();
+    vi.mocked(transitionIssue).mockReset();
+    useAuthMock.mockReset();
+    useAuthMock.mockReturnValue(null); // default: no management controls
     vi.mocked(getIssue).mockResolvedValue(baseIssue);
     vi.mocked(listIssueEvents).mockResolvedValue(events);
     vi.mocked(addComment).mockResolvedValue({
@@ -77,6 +94,8 @@ describe('IssueDetailView', () => {
       kind: 'NOTE',
       createdAt: '2026-05-21T05:00:00Z',
     });
+    vi.mocked(assignIssue).mockResolvedValue(baseIssue);
+    vi.mocked(transitionIssue).mockResolvedValue(baseIssue);
   });
 
   it('renders metadata, body, comments and activity log', async () => {
@@ -152,5 +171,36 @@ describe('IssueDetailView', () => {
     vi.mocked(listIssueEvents).mockResolvedValue([]);
     renderView();
     expect(await screen.findByText('권한이 없습니다')).toBeInTheDocument();
+  });
+
+  it('assigns a field worker for AGENT (AC1, AC2)', async () => {
+    const user = userEvent.setup();
+    useAuthMock.mockReturnValue({ id: 1, username: 'agent1', displayName: '김상담1', role: 'AGENT' });
+    renderView();
+    await screen.findByText('#1 엘리베이터 고장');
+    await user.click(screen.getByText('mock-select-field')); // sets assigneeId=2
+    await user.click(screen.getByRole('button', { name: '배정' }));
+    await waitFor(() => expect(assignIssue).toHaveBeenCalledWith(1, { assigneeId: 2 }));
+  });
+
+  it('shows only the valid next-state transition button (AC3) and transitions', async () => {
+    const user = userEvent.setup();
+    useAuthMock.mockReturnValue({ id: 1, username: 'agent1', displayName: '김상담1', role: 'AGENT' });
+    vi.mocked(getIssue).mockResolvedValue({ ...baseIssue, status: 'ASSIGNED' });
+    renderView();
+    await screen.findByText('#1 엘리베이터 고장');
+    // ASSIGNED → only [IN_PROGRESS]; DONE button must not appear
+    const next = screen.getByRole('button', { name: '진행중(으)로 변경' });
+    expect(screen.queryByRole('button', { name: '완료(으)로 변경' })).not.toBeInTheDocument();
+    await user.click(next);
+    await waitFor(() => expect(transitionIssue).toHaveBeenCalledWith(1, { to: 'IN_PROGRESS' }));
+  });
+
+  it('hides management controls for FIELD users (Deviation #8)', async () => {
+    useAuthMock.mockReturnValue({ id: 2, username: 'field1', displayName: '이현장1', role: 'FIELD' });
+    renderView();
+    await screen.findByText('#1 엘리베이터 고장');
+    expect(screen.queryByRole('button', { name: '배정' })).not.toBeInTheDocument();
+    expect(screen.queryByText('mock-select-field')).not.toBeInTheDocument();
   });
 });
