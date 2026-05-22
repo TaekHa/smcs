@@ -48,6 +48,12 @@ public class NotificationService {
 				actorName(actorId) + "님이 #" + issue.getId() + " 이슈 상태를 " + statusLabel(to) + "(으)로 변경했습니다");
 	}
 
+	/** Reopen → notify stakeholders except the actor (Story 2.7). */
+	public void onReopened(Issue issue, Long actorId) {
+		fanOut(issue, NotificationKind.ISSUE_REOPENED, actorId,
+				actorName(actorId) + "님이 #" + issue.getId() + " 이슈를 재오픈했습니다");
+	}
+
 	/** Stakeholders = {assignee, creator} − actor (no self-notify, deduped). */
 	private void fanOut(Issue issue, NotificationKind kind, Long actorId, String message) {
 		Set<Long> recipients = new HashSet<>();

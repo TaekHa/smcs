@@ -1,5 +1,8 @@
 package com.smcs.issue;
 
+import com.smcs.comment.Comment;
+import com.smcs.comment.CommentKind;
+import com.smcs.comment.CommentRepository;
 import com.smcs.crypto.HmacHasher;
 import com.smcs.issue.dto.CreateIssueRequest;
 import com.smcs.issue.dto.IssueResponse;
@@ -18,16 +21,18 @@ public class IssueService {
 	private final UserRepository userRepository;
 	private final IssueAccessGuard accessGuard;
 	private final NotificationService notificationService;
+	private final CommentRepository commentRepository;
 
 	public IssueService(IssueRepository issueRepository, IssueEventRepository issueEventRepository,
 			HmacHasher hmacHasher, UserRepository userRepository, IssueAccessGuard accessGuard,
-			NotificationService notificationService) {
+			NotificationService notificationService, CommentRepository commentRepository) {
 		this.issueRepository = issueRepository;
 		this.issueEventRepository = issueEventRepository;
 		this.hmacHasher = hmacHasher;
 		this.userRepository = userRepository;
 		this.accessGuard = accessGuard;
 		this.notificationService = notificationService;
+		this.commentRepository = commentRepository;
 	}
 
 	/**
@@ -87,11 +92,31 @@ public class IssueService {
 		if (!from.canTransitionTo(to)) {
 			throw new IssueTransitionException(from, to);
 		}
+		// 검수/재오픈(DONE 출발)은 AGENT/ADMIN 전용 (§6.3, Story 2.7); owner-FIELD 허용은 전진 전이만.
+		if (from == IssueStatus.DONE && !privileged) {
+			throw new IssueForbiddenException(issueId);
+		}
+		boolean reopen = from == IssueStatus.DONE && to == IssueStatus.IN_PROGRESS;
+		if (reopen && (reason == null || reason.isBlank())) {
+			throw new ReopenReasonRequiredException(issueId); // AC2
+		}
+
 		issue.transitionTo(to);
 		issueRepository.save(issue);
+
+		if (reopen) {
+			// Record the reason as a comment → comment section + COMMENTED activity-log entry (AC2/AC3).
+			commentRepository.save(new Comment(issueId, actorId, "재오픈 사유: " + reason.trim(), CommentKind.NOTE));
+			issueEventRepository.save(new IssueEvent(issueId, actorId, IssueEventType.COMMENTED, null, null));
+		}
 		IssueEventType eventType = to == IssueStatus.DONE
 				? IssueEventType.RESOLVED : IssueEventType.STATUS_CHANGED;
 		issueEventRepository.save(new IssueEvent(issueId, actorId, eventType, from.name(), to.name()));
-		notificationService.onStatusChanged(issue, actorId, to);
+
+		if (reopen) {
+			notificationService.onReopened(issue, actorId);
+		} else {
+			notificationService.onStatusChanged(issue, actorId, to);
+		}
 	}
 }

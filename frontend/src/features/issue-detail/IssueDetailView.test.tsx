@@ -203,4 +203,30 @@ describe('IssueDetailView', () => {
     expect(screen.queryByRole('button', { name: '배정' })).not.toBeInTheDocument();
     expect(screen.queryByText('mock-select-field')).not.toBeInTheDocument();
   });
+
+  it('verifies a DONE issue (2.7 AC1)', async () => {
+    const user = userEvent.setup();
+    useAuthMock.mockReturnValue({ id: 1, username: 'agent1', displayName: '김상담1', role: 'AGENT' });
+    vi.mocked(getIssue).mockResolvedValue({ ...baseIssue, status: 'DONE' });
+    renderView();
+    await screen.findByText('#1 엘리베이터 고장');
+    await user.click(screen.getByRole('button', { name: '검수 완료' }));
+    await waitFor(() => expect(transitionIssue).toHaveBeenCalledWith(1, { to: 'VERIFIED' }));
+  });
+
+  it('reopens a DONE issue with a required reason (2.7 AC2/AC3)', async () => {
+    const user = userEvent.setup();
+    useAuthMock.mockReturnValue({ id: 1, username: 'agent1', displayName: '김상담1', role: 'AGENT' });
+    vi.mocked(getIssue).mockResolvedValue({ ...baseIssue, status: 'DONE' });
+    renderView();
+    await screen.findByText('#1 엘리베이터 고장');
+    await user.click(screen.getByRole('button', { name: '재오픈' })); // open the modal
+    await user.type(screen.getByPlaceholderText('재오픈 사유를 입력하세요'), '추가 작업 필요');
+    // both the trigger and the modal OK are labelled 재오픈; the modal OK is the last
+    const reopenButtons = screen.getAllByRole('button', { name: '재오픈' });
+    await user.click(reopenButtons[reopenButtons.length - 1]);
+    await waitFor(() =>
+      expect(transitionIssue).toHaveBeenCalledWith(1, { to: 'IN_PROGRESS', reason: '추가 작업 필요' })
+    );
+  });
 });

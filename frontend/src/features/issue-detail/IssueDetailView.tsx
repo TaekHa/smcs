@@ -8,6 +8,7 @@ import {
   Image,
   Input,
   List,
+  Modal,
   Space,
   Spin,
   Tag,
@@ -76,6 +77,8 @@ export function IssueDetailView() {
   const currentUser = useAuth();
   const [body, setBody] = useState('');
   const [assigneeId, setAssigneeId] = useState<number | undefined>();
+  const [reopenOpen, setReopenOpen] = useState(false);
+  const [reopenReason, setReopenReason] = useState('');
 
   // §6.3: only AGENT/ADMIN manage assignment/transition from the desktop detail (Deviation #8).
   const canManage = currentUser?.role === 'AGENT' || currentUser?.role === 'ADMIN';
@@ -170,9 +173,56 @@ export function IssueDetailView() {
                   {STATUS_LABELS[next]}(으)로 변경
                 </Button>
               ))}
+              {/* Story 2.7: DONE → 검수(VERIFIED) / 재오픈(IN_PROGRESS, 사유 필수) */}
+              {issue.status === 'DONE' && (
+                <>
+                  <Text strong style={{ marginLeft: 16 }}>
+                    검수:
+                  </Text>
+                  <Button
+                    type="primary"
+                    onClick={() => transition.mutate({ to: 'VERIFIED' })}
+                    loading={transition.isPending}
+                  >
+                    검수 완료
+                  </Button>
+                  <Button danger onClick={() => setReopenOpen(true)}>
+                    재오픈
+                  </Button>
+                </>
+              )}
             </Space>
           </section>
           <Divider />
+
+          {/* AC2: reopen requires a reason */}
+          <Modal
+            title="이슈 재오픈"
+            open={reopenOpen}
+            okText="재오픈"
+            cancelText="취소"
+            okButtonProps={{ danger: true, disabled: !reopenReason.trim(), loading: transition.isPending }}
+            onCancel={() => setReopenOpen(false)}
+            onOk={() =>
+              transition.mutate(
+                { to: 'IN_PROGRESS', reason: reopenReason.trim() },
+                {
+                  onSuccess: () => {
+                    setReopenOpen(false);
+                    setReopenReason('');
+                  },
+                }
+              )
+            }
+          >
+            <Input.TextArea
+              value={reopenReason}
+              onChange={(e) => setReopenReason(e.target.value)}
+              placeholder="재오픈 사유를 입력하세요"
+              autoSize={{ minRows: 3, maxRows: 6 }}
+              maxLength={4000}
+            />
+          </Modal>
         </>
       )}
 
