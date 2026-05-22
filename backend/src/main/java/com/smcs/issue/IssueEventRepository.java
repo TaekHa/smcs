@@ -6,4 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface IssueEventRepository extends JpaRepository<IssueEvent, Long> {
 
 	List<IssueEvent> findByIssueIdOrderByCreatedAtAsc(Long issueId);
+
+	List<IssueEvent> findByIssueIdOrderByCreatedAtDesc(Long issueId);
 }

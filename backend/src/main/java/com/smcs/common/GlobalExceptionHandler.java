@@ -4,6 +4,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import com.smcs.issue.IssueForbiddenException;
+import com.smcs.issue.IssueNotFoundException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.AuthenticationException;
@@ -56,6 +58,18 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex) {
 		return ResponseEntity.status(HttpStatus.FORBIDDEN)
 				.body(ErrorResponse.of("FORBIDDEN", "You do not have permission to access this resource."));
+	}
+
+	@ExceptionHandler(IssueNotFoundException.class)
+	public ResponseEntity<ErrorResponse> handleIssueNotFound(IssueNotFoundException ex) {
+		return ResponseEntity.status(HttpStatus.NOT_FOUND)
+				.body(ErrorResponse.of("ISSUE_NOT_FOUND", "Issue not found."));
+	}
+
+	@ExceptionHandler(IssueForbiddenException.class)
+	public ResponseEntity<ErrorResponse> handleIssueForbidden(IssueForbiddenException ex) {
+		return ResponseEntity.status(HttpStatus.FORBIDDEN)
+				.body(ErrorResponse.of("ISSUE_FORBIDDEN", "You do not have access to this issue."));
 	}
 
 	@ExceptionHandler(Exception.class)
