@@ -229,4 +229,75 @@ interface Notification {
 - 미읽음 카운트는 헤더 벨 아이콘 뱃지에 표시.
 - 알림 클릭 시 해당 이슈 상세 페이지로 이동 + `readAt` 자동 업데이트.
 
+**[Epic 3 개정 — V5 마이그레이션, Architect 2026-05-22]** 보고서 자동 생성 알림(Story 3.4 AC6/AC7)을 위해 본 테이블을 확장한다(분리 테이블 대신 기존 벨/폴링/리스트 인프라 재사용):
+- `issue_id` → **nullable** 로 변경(보고서 알림은 관련 이슈 없음).
+- `kind` CHECK 에 **`REPORT_READY`, `REPORT_FAILED`** 추가.
+- `NotificationKind` TS 타입에 동일 2종 추가. `Notification.issueId` → `number | null`.
+- 알림 클릭 동작 분기: `issueId != null → /issues/:id`, **`issueId == null → /reports`**(보고서 알림).
+- 수신자 패턴 신규: 보고서 알림은 **전체 ADMIN** 에게(`recipient = each ADMIN`, 이슈 이해관계자 아님). `NotificationService.notifyAdmins(kind, message)` 추가.
+- 이는 Epic 2 의 "V2 스키마 무변경(ddl-auto=validate)" 원칙이 끝나는 **첫 신규 Flyway(V5)** 다. **PO 비준됨 2026-05-22 (Sarah): 기존 테이블 확장 방식 채택**(분리 테이블 아님 — 2.8 인프라 재사용).
+
+## 5.8 Report (자동 생성 보고서) — [Epic 3 신설, V5]
+
+**Purpose:** 일/주간 자동 생성 PDF 보고서의 메타데이터. 파일은 디스크(`/var/smcs/files` 또는 `smcs_reports` 볼륨), 메타는 DB.
+
+**Key Attributes:**
+- `id`: Long
+- `kind`: Enum — `DAILY` / `WEEKLY`
+- `periodKey`: String — 일간 `YYYY-MM-DD`(KST 일자), 주간 `YYYY-Www`(ISO 주차). idempotent 키(동일 기간 재생성 시 덮어쓰기 — Story 3.4 AC4).
+- `filePath`: String — 저장 상대경로(`reports/{kind}/{periodKey}.pdf` 등, UUID 불요 — periodKey 가 유일)
+- `sizeBytes`: Long
+- `createdAt`: Timestamp
+
+**TypeScript Interface:**
+```typescript
+type ReportKind = "DAILY" | "WEEKLY";
+
+interface Report {
+  id: number;
+  kind: ReportKind;
+  periodKey: string;   // "2026-05-21" | "2026-W21"
+  url: string;         // 보안 서빙 경로 (ADMIN 전용, 직접 스트림 — 2.6 FileController 패턴)
+  sizeBytes: number;
+  createdAt: string;
+}
+```
+
+**동작 방식 (MVP):**
+- 생성: `@Scheduled`(08:00 KST 일간 / 월요일 주간) → `ReportService.generateDaily(date)`/`generateWeekly(week)`(시간 비의존 — 단위 테스트 대상). PDFBox 3.0.3 + 나눔고딕 임베드.
+- idempotent: `(kind, periodKey)` UNIQUE — 재실행 시 파일 덮어쓰기 + 메타 upsert(Story 3.4 AC4).
+- 서빙: `GET /api/reports/daily?date=`·`/weekly?week=`·보관함 리스트 = **ADMIN 전용**, 직접 스트림(2.6 패턴, X-Accel 배포 swap-in).
+- 정리: 90일 경과 보고서 일일 cleanup 잡으로 파일+메타 삭제(Story 3.5 AC5).
+- 집계: 대시보드(3.1)와 **동일한 `StatsService` 공유**(3.3 PDF 도 동일 데이터).
+
+**V5 마이그레이션 신규 테이블** `reports`: `id BIGSERIAL PK, kind VARCHAR(10) CHECK(DAILY|WEEKLY), period_key VARCHAR(10) NOT NULL, file_path VARCHAR(200) NOT NULL, size_bytes BIGINT NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW(), UNIQUE(kind, period_key)`. 인덱스 `(kind, created_at DESC)`(보관함 최신순).
+
+## 5.9 Stats (계산 모델 — 비영속) — [Epic 3, Architect 설계]
+
+**Purpose:** 대시보드(Story 3.1/3.2)와 PDF 보고서(3.3)가 **공유하는 집계 결과**. 영속 엔티티가 아니라 `StatsService`가 이슈 데이터로 계산하는 read-only DTO. 단일 출처로 대시보드·PDF가 동일 수치를 보장(3.1 AC).
+
+**계산 모델 (`DashboardStats`):**
+```typescript
+interface DashboardStats {
+  kpi: {
+    newCount: number;          // period 내 created_at
+    resolvedCount: number;     // period 내 resolved_at
+    openCount: number;         // 현재 status ∉ {DONE, VERIFIED} (period 무관)
+    avgResolveMinutes: number; // period 내 해결분의 avg(resolved_at − created_at)
+  };
+  byCategory: { name: string; count: number }[];      // category_l1 그룹
+  byAssignee: { name: string; resolved: number }[];   // assigned_to 그룹 (period 내 해결)
+  byPriority: { priority: Priority; count: number }[];
+  trend: { date: string; newCount: number; resolvedCount: number }[]; // KST 일자별
+}
+```
+
+**설계 규약 (Architect 2026-05-22):**
+- **API**: `GET /api/stats/dashboard?period=today|week|month` (인증; 대시보드는 ADMIN 라우트지만 §6 stats=인증 — 화면 가드로 ADMIN 한정). P95 < 500ms (3.1 AC4).
+- **KST 경계**: period → `[day.atStartOfDay(KST) → exclusive end].toInstant()` (2.2 `IssueQueryService.startOfDay` 패턴 재사용). UTC 저장값을 KST 경계로 필터.
+- **`resolved_at` = 통계의 핵심 축**: "처리 건수/평균 처리시간"은 `resolved_at` 기반. 2.4(→DONE set)/2.7(재오픈 clear)이 관리. **PO 확정 2026-05-22 (Sarah): 처리시간 = 접수→최종 완료**(§13 KPI "접수→완료" 부합). 재오픈→재완료 시 `resolved_at`은 최종 완료 시각으로 갱신(현 구현). 첫 완료 기준 아님 — 추가 추적 불요.
+- **추세는 native SQL**: `(created_at AT TIME ZONE 'Asia/Seoul')::date` 그룹핑은 JPQL 표현 불가 → `JdbcTemplate`(LocalDataSeeder 선례). 단순 count/group은 JPQL/Specification.
+- **단위 테스트(3.1 AC5)**: 집계 메서드 단위. 계산 로직과 쿼리 분리.
+- **V5 인덱스(P95 근거)**: `issues(created_at)`, `issues(resolved_at)`, `issues(status)`, `issues(assigned_to)`, `issues(category_l1_id)` — V2 미존재분은 V5에서 추가. MVP 데이터량은 작으나 AC4가 명시 성능기준이라 인덱스 근거를 남긴다.
+
 ---
