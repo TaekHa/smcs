@@ -16,7 +16,13 @@ spring:
     open-in-view: false
     properties:
       hibernate.jdbc.time_zone: UTC
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
 smcs:
+  files:
+    dir: ${SMCS_FILES_DIR:/var/smcs/files}
   jwt:
     secret: ${SMCS_JWT_SECRET:}
     expiration-seconds: 28800

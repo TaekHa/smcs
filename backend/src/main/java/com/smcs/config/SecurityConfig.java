@@ -76,6 +76,7 @@ public class SecurityConfig {
 				.authorizeHttpRequests(authz -> authz
 						.requestMatchers("/api/auth/login", "/api/health").permitAll()
 						.requestMatchers("/api/**").authenticated()
+						.requestMatchers("/files/**").authenticated()
 						.anyRequest().permitAll())
 				.exceptionHandling(ex -> ex
 						.authenticationEntryPoint((req, resp, e) -> writeError(resp,

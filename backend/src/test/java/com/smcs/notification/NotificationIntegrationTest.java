@@ -77,6 +77,7 @@ class NotificationIntegrationTest {
 	@BeforeEach
 	void seed() throws Exception {
 		jdbc.update("DELETE FROM notifications");
+		jdbc.update("DELETE FROM attachments");
 		jdbc.update("DELETE FROM comments");
 		jdbc.update("DELETE FROM issue_events");
 		jdbc.update("DELETE FROM issues");

@@ -74,6 +74,7 @@ class IssueListIntegrationTest {
 	@BeforeEach
 	void seed() throws Exception {
 		jdbc.update("DELETE FROM notifications");
+		jdbc.update("DELETE FROM attachments");
 		jdbc.update("DELETE FROM issue_events");
 		jdbc.update("DELETE FROM issues");
 		createIssue("엘리베이터 긴급", "URGENT", "010-9999-8888", "홍길동");
