@@ -47,6 +47,74 @@ export interface Page<T> {
   size: number;
 }
 
+// ── Story 2.3: issue detail / comments / activity ──────────────────────────
+
+export type CommentKind = 'NOTE' | 'FIELD_ACTION' | 'SYSTEM';
+
+export type IssueEventType =
+  | 'CREATED'
+  | 'STATUS_CHANGED'
+  | 'ASSIGNED'
+  | 'COMMENTED'
+  | 'ATTACHMENT_ADDED'
+  | 'RESOLVED';
+
+export interface CategoryRef {
+  id: number;
+  name: string;
+}
+
+export interface Comment {
+  id: number;
+  authorName: string;
+  body: string;
+  kind: CommentKind;
+  createdAt: string;
+}
+
+export interface IssueActivity {
+  id: number;
+  eventType: IssueEventType;
+  actorName: string;
+  fromValue: string | null;
+  toValue: string | null;
+  createdAt: string;
+}
+
+export interface Attachment {
+  id: number;
+  originalName: string;
+  url: string;
+  mimeType: string;
+  sizeBytes: number;
+  createdAt: string;
+}
+
+export interface IssueDetail {
+  id: number;
+  title: string;
+  description: string;
+  categoryL1: CategoryRef;
+  categoryL2: CategoryRef;
+  categoryL3: CategoryRef;
+  priority: Priority;
+  status: IssueStatus;
+  createdByName: string;
+  assigneeName: string | null;
+  resolvedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  // PII — non-null only for AGENT/ADMIN; null for FIELD (Deviation #2).
+  callerName: string | null;
+  callerPhone: string | null;
+  comments: Comment[];
+  attachments: Attachment[];
+}
+
+export interface AddCommentRequest {
+  body: string;
+}
+
 export interface IssueListParams {
   page?: number;
   size?: number;

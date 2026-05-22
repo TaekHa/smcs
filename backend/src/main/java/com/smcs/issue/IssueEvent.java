@@ -71,6 +71,14 @@ public class IssueEvent {
 		return eventType;
 	}
 
+	public String getFromValue() {
+		return fromValue;
+	}
+
+	public String getToValue() {
+		return toValue;
+	}
+
 	public Instant getCreatedAt() {
 		return createdAt;
 	}

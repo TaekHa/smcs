@@ -114,8 +114,8 @@ export function AppRoutes() {
       {/* Future routes (Epic 2~4):
           /m/issues/:id, /dashboard, /reports, /reports/:kind/:date,
           /notifications, /admin/users, /admin/categories
-          NOTE: /issues/:id is a Story 2.1 placeholder — full detail +
-          §9.5 authz guard (assignee/AGENT/ADMIN) is Story 2.3. */}
+          NOTE: /issues/:id is RequireAuth-only (no RequireRole) so FIELD assignees
+          can reach it; the backend enforces §6.3 ownership (403 ISSUE_FORBIDDEN). */}
 
       <Route path="*" element={<NotFoundView />} />
     </Routes>

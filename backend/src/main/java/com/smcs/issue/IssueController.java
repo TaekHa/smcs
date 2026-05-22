@@ -1,6 +1,11 @@
 package com.smcs.issue;
 
+import com.smcs.comment.CommentService;
+import com.smcs.comment.dto.AddCommentRequest;
+import com.smcs.comment.dto.CommentResponse;
 import com.smcs.issue.dto.CreateIssueRequest;
+import com.smcs.issue.dto.IssueActivityResponse;
+import com.smcs.issue.dto.IssueDetailResponse;
 import com.smcs.issue.dto.IssueListFilter;
 import com.smcs.issue.dto.IssueResponse;
 import com.smcs.issue.dto.IssueSummary;
@@ -13,8 +18,11 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -28,10 +36,13 @@ public class IssueController {
 
 	private final IssueService issueService;
 	private final IssueQueryService issueQueryService;
+	private final CommentService commentService;
 
-	public IssueController(IssueService issueService, IssueQueryService issueQueryService) {
+	public IssueController(IssueService issueService, IssueQueryService issueQueryService,
+			CommentService commentService) {
 		this.issueService = issueService;
 		this.issueQueryService = issueQueryService;
+		this.commentService = commentService;
 	}
 
 	@GetMapping("/issues")
@@ -58,5 +69,40 @@ public class IssueController {
 			@AuthenticationPrincipal Object principal) {
 		Long currentUserId = (Long) principal;
 		return issueService.create(request, currentUserId);
+	}
+
+	// FIELD ownership ("본인 배정만") can't be expressed in @PreAuthorize, so these three
+	// only require authentication and delegate ownership to the service (IssueAccessGuard).
+
+	@GetMapping("/issues/{id}")
+	@PreAuthorize("isAuthenticated()")
+	public IssueDetailResponse detail(@PathVariable Long id,
+			@AuthenticationPrincipal Object principal, Authentication authentication) {
+		Long currentUserId = (Long) principal;
+		return issueQueryService.getDetail(id, currentUserId, privileged(authentication));
+	}
+
+	@PostMapping("/issues/{id}/comments")
+	@PreAuthorize("isAuthenticated()")
+	@ResponseStatus(HttpStatus.CREATED)
+	public CommentResponse addComment(@PathVariable Long id, @Valid @RequestBody AddCommentRequest request,
+			@AuthenticationPrincipal Object principal, Authentication authentication) {
+		Long currentUserId = (Long) principal;
+		return commentService.addComment(id, currentUserId, privileged(authentication), request);
+	}
+
+	@GetMapping("/issues/{id}/events")
+	@PreAuthorize("isAuthenticated()")
+	public List<IssueActivityResponse> events(@PathVariable Long id,
+			@AuthenticationPrincipal Object principal, Authentication authentication) {
+		Long currentUserId = (Long) principal;
+		return issueQueryService.getActivity(id, currentUserId, privileged(authentication));
+	}
+
+	/** AGENT/ADMIN have full issue access; FIELD is assigned-only (§6.3). */
+	private boolean privileged(Authentication authentication) {
+		return authentication.getAuthorities().stream()
+				.map(GrantedAuthority::getAuthority)
+				.anyMatch(a -> a.equals("ROLE_AGENT") || a.equals("ROLE_ADMIN"));
 	}
 }
