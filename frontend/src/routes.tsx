@@ -32,6 +32,9 @@ const MobileFieldDetailView = lazy(() =>
     default: m.MobileFieldDetailView,
   }))
 );
+const NotificationsView = lazy(() =>
+  import('./features/notifications/NotificationsView').then((m) => ({ default: m.NotificationsView }))
+);
 
 function RouteFallback() {
   return (
@@ -127,11 +130,22 @@ export function AppRoutes() {
         }
       />
 
+      <Route
+        path="/notifications"
+        element={
+          <RequireAuth>
+            <AppLayout>
+              <NotificationsView />
+            </AppLayout>
+          </RequireAuth>
+        }
+      />
+
       <Route path="/403" element={<ForbiddenView />} />
 
       {/* Future routes (Epic 2~4):
           /dashboard, /reports, /reports/:kind/:date,
-          /notifications, /admin/users, /admin/categories
+          /admin/users, /admin/categories
           NOTE: /issues/:id is RequireAuth-only (no RequireRole) so FIELD assignees
           can reach it; the backend enforces §6.3 ownership (403 ISSUE_FORBIDDEN).
           /m/issues/:id is a Story 2.5 placeholder — mobile detail (photo + action)
