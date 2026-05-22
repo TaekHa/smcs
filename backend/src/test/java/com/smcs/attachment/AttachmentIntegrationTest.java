@@ -3,6 +3,7 @@ package com.smcs.attachment;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -171,7 +172,7 @@ class AttachmentIntegrationTest {
 
 		mockMvc.perform(get("/files/" + filename).header("Authorization", "Bearer " + token("field1")))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$").doesNotExist()); // binary body, not JSON
+				.andExpect(content().contentTypeCompatibleWith(MediaType.IMAGE_JPEG));
 		mockMvc.perform(get("/files/" + filename).header("Authorization", "Bearer " + token("field2")))
 				.andExpect(status().isForbidden());
 		mockMvc.perform(get("/files/2026/05/missing.jpg").header("Authorization", "Bearer " + token("field1")))
