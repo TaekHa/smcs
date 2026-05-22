@@ -3,9 +3,11 @@ package com.smcs.issue;
 import com.smcs.comment.CommentService;
 import com.smcs.comment.dto.AddCommentRequest;
 import com.smcs.comment.dto.CommentResponse;
+import com.smcs.issue.dto.AssignRequest;
 import com.smcs.issue.dto.CreateIssueRequest;
 import com.smcs.issue.dto.IssueActivityResponse;
 import com.smcs.issue.dto.IssueDetailResponse;
+import com.smcs.issue.dto.TransitionRequest;
 import com.smcs.issue.dto.IssueListFilter;
 import com.smcs.issue.dto.IssueResponse;
 import com.smcs.issue.dto.IssueSummary;
@@ -97,6 +99,25 @@ public class IssueController {
 			@AuthenticationPrincipal Object principal, Authentication authentication) {
 		Long currentUserId = (Long) principal;
 		return issueQueryService.getActivity(id, currentUserId, privileged(authentication));
+	}
+
+	@PostMapping("/issues/{id}/assign")
+	@PreAuthorize("hasAnyRole('AGENT','ADMIN')")
+	public IssueDetailResponse assign(@PathVariable Long id, @Valid @RequestBody AssignRequest request,
+			@AuthenticationPrincipal Object principal, Authentication authentication) {
+		Long actorId = (Long) principal;
+		issueService.assign(id, request.assigneeId(), actorId);
+		return issueQueryService.getDetail(id, actorId, privileged(authentication));
+	}
+
+	@PostMapping("/issues/{id}/transition")
+	@PreAuthorize("isAuthenticated()")
+	public IssueDetailResponse transition(@PathVariable Long id, @Valid @RequestBody TransitionRequest request,
+			@AuthenticationPrincipal Object principal, Authentication authentication) {
+		Long actorId = (Long) principal;
+		boolean privileged = privileged(authentication);
+		issueService.transition(id, request.to(), actorId, privileged, request.reason());
+		return issueQueryService.getDetail(id, actorId, privileged);
 	}
 
 	/** AGENT/ADMIN have full issue access; FIELD is assigned-only (§6.3). */

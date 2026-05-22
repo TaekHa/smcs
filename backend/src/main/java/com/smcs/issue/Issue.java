@@ -10,6 +10,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.Instant;
 
@@ -102,6 +103,27 @@ public class Issue {
 		this.updatedAt = now;
 		if (this.status == null) {
 			this.status = IssueStatus.NEW;
+		}
+	}
+
+	@PreUpdate
+	void onUpdate() {
+		this.updatedAt = Instant.now();
+	}
+
+	/** Assigns a field worker; a NEW issue auto-transitions to ASSIGNED (Story 2.4 AC2). */
+	public void assign(Long assigneeId) {
+		this.assignedTo = assigneeId;
+		if (this.status == IssueStatus.NEW) {
+			this.status = IssueStatus.ASSIGNED;
+		}
+	}
+
+	/** Moves to {@code next}; transitioning to DONE stamps {@code resolvedAt} (Story 2.4). */
+	public void transitionTo(IssueStatus next) {
+		this.status = next;
+		if (next == IssueStatus.DONE) {
+			this.resolvedAt = Instant.now();
 		}
 	}
 

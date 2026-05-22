@@ -4,8 +4,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import com.smcs.issue.InvalidAssigneeException;
 import com.smcs.issue.IssueForbiddenException;
 import com.smcs.issue.IssueNotFoundException;
+import com.smcs.issue.IssueTransitionException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.AuthenticationException;
@@ -70,6 +72,18 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ErrorResponse> handleIssueForbidden(IssueForbiddenException ex) {
 		return ResponseEntity.status(HttpStatus.FORBIDDEN)
 				.body(ErrorResponse.of("ISSUE_FORBIDDEN", "You do not have access to this issue."));
+	}
+
+	@ExceptionHandler(IssueTransitionException.class)
+	public ResponseEntity<ErrorResponse> handleInvalidTransition(IssueTransitionException ex) {
+		return ResponseEntity.status(HttpStatus.CONFLICT)
+				.body(ErrorResponse.of("INVALID_TRANSITION", "This status transition is not allowed."));
+	}
+
+	@ExceptionHandler(InvalidAssigneeException.class)
+	public ResponseEntity<ErrorResponse> handleInvalidAssignee(InvalidAssigneeException ex) {
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+				.body(ErrorResponse.of("INVALID_ASSIGNEE", "Assignee must be an active field worker."));
 	}
 
 	@ExceptionHandler(Exception.class)
