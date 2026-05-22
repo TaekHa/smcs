@@ -229,15 +229,15 @@ interface Notification {
 - 미읽음 카운트는 헤더 벨 아이콘 뱃지에 표시.
 - 알림 클릭 시 해당 이슈 상세 페이지로 이동 + `readAt` 자동 업데이트.
 
-**[Epic 3 개정 — V5 마이그레이션, Architect 2026-05-22]** 보고서 자동 생성 알림(Story 3.4 AC6/AC7)을 위해 본 테이블을 확장한다(분리 테이블 대신 기존 벨/폴링/리스트 인프라 재사용):
+**[Epic 3 개정 — V7 마이그레이션(Story 3.4), Architect 2026-05-22]** 보고서 자동 생성 알림(Story 3.4 AC6/AC7)을 위해 본 테이블을 확장한다(분리 테이블 대신 기존 벨/폴링/리스트 인프라 재사용):
 - `issue_id` → **nullable** 로 변경(보고서 알림은 관련 이슈 없음).
 - `kind` CHECK 에 **`REPORT_READY`, `REPORT_FAILED`** 추가.
 - `NotificationKind` TS 타입에 동일 2종 추가. `Notification.issueId` → `number | null`.
 - 알림 클릭 동작 분기: `issueId != null → /issues/:id`, **`issueId == null → /reports`**(보고서 알림).
 - 수신자 패턴 신규: 보고서 알림은 **전체 ADMIN** 에게(`recipient = each ADMIN`, 이슈 이해관계자 아님). `NotificationService.notifyAdmins(kind, message)` 추가.
-- 이는 Epic 2 의 "V2 스키마 무변경(ddl-auto=validate)" 원칙이 끝나는 **첫 신규 Flyway(V5)** 다. **PO 비준됨 2026-05-22 (Sarah): 기존 테이블 확장 방식 채택**(분리 테이블 아님 — 2.8 인프라 재사용).
+- Epic 2 의 "V2 스키마 무변경(ddl-auto=validate)" 원칙은 Story 3.1 의 **V5(resolved_at 인덱스)** 에서 이미 종료됐고, 본 notifications 확장은 **V7(Story 3.4)** 다. **PO 비준됨 2026-05-22 (Sarah): 기존 테이블 확장 방식 채택**(분리 테이블 아님 — 2.8 인프라 재사용). **PO 정정 2026-05-22 (Sarah): 마이그레이션 버전 V5→V7 — V5/V6 는 각각 Story 3.1 resolved_at 인덱스 / Story 3.4 reports 테이블이 선점.**
 
-## 5.8 Report (자동 생성 보고서) — [Epic 3 신설, V5]
+## 5.8 Report (자동 생성 보고서) — [Epic 3 신설, V6 — Story 3.4]
 
 **Purpose:** 일/주간 자동 생성 PDF 보고서의 메타데이터. 파일은 디스크(`/var/smcs/files` 또는 `smcs_reports` 볼륨), 메타는 DB.
 
@@ -270,7 +270,7 @@ interface Report {
 - 정리: 90일 경과 보고서 일일 cleanup 잡으로 파일+메타 삭제(Story 3.5 AC5).
 - 집계: 대시보드(3.1)와 **동일한 `StatsService` 공유**(3.3 PDF 도 동일 데이터).
 
-**V5 마이그레이션 신규 테이블** `reports`: `id BIGSERIAL PK, kind VARCHAR(10) CHECK(DAILY|WEEKLY), period_key VARCHAR(10) NOT NULL, file_path VARCHAR(200) NOT NULL, size_bytes BIGINT NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW(), UNIQUE(kind, period_key)`. 인덱스 `(kind, created_at DESC)`(보관함 최신순).
+**V6 마이그레이션 신규 테이블**(Story 3.4 — 보관함 적재가 소유; Story 3.3 은 on-demand PDF 생성 엔진으로 테이블 불요. PO 정정 2026-05-22 Sarah) `reports`: `id BIGSERIAL PK, kind VARCHAR(10) CHECK(DAILY|WEEKLY), period_key VARCHAR(10) NOT NULL, file_path VARCHAR(200) NOT NULL, size_bytes BIGINT NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW(), UNIQUE(kind, period_key)`. 인덱스 `(kind, created_at DESC)`(보관함 최신순).
 
 ## 5.9 Stats (계산 모델 — 비영속) — [Epic 3, Architect 설계]
 
@@ -298,6 +298,6 @@ interface DashboardStats {
 - **`resolved_at` = 통계의 핵심 축**: "처리 건수/평균 처리시간"은 `resolved_at` 기반. 2.4(→DONE set)/2.7(재오픈 clear)이 관리. **PO 확정 2026-05-22 (Sarah): 처리시간 = 접수→최종 완료**(§13 KPI "접수→완료" 부합). 재오픈→재완료 시 `resolved_at`은 최종 완료 시각으로 갱신(현 구현). 첫 완료 기준 아님 — 추가 추적 불요.
 - **추세는 native SQL**: `(created_at AT TIME ZONE 'Asia/Seoul')::date` 그룹핑은 JPQL 표현 불가 → `JdbcTemplate`(LocalDataSeeder 선례). 단순 count/group은 JPQL/Specification.
 - **단위 테스트(3.1 AC5)**: 집계 메서드 단위. 계산 로직과 쿼리 분리.
-- **V5 인덱스(P95 근거)**: `issues(created_at)`, `issues(resolved_at)`, `issues(status)`, `issues(assigned_to)`, `issues(category_l1_id)` — V2 미존재분은 V5에서 추가. MVP 데이터량은 작으나 AC4가 명시 성능기준이라 인덱스 근거를 남긴다.
+- **V5 인덱스(P95 근거)**: `issues(created_at)`, `issues(resolved_at)`, `issues(status)`, `issues(assigned_to)`, `issues(category_l1_id)` 가 P95 근거 인덱스다. **PO 확인 2026-05-22 (Sarah): V2 에 `created_at`·`status`·`(assigned_to,status)`·`category_l1_id` 가 이미 존재 → V5 에서 신규 추가되는 것은 `resolved_at` 하나뿐**(Story 3.1 Task 1, 실제 V2 마이그레이션 대조 검증). MVP 데이터량은 작으나 AC4가 명시 성능기준이라 인덱스 근거를 남긴다.
 
 ---
