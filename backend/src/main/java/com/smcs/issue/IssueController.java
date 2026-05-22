@@ -76,6 +76,13 @@ public class IssueController {
 	// FIELD ownership ("본인 배정만") can't be expressed in @PreAuthorize, so these three
 	// only require authentication and delegate ownership to the service (IssueAccessGuard).
 
+	@GetMapping("/me/assigned")
+	@PreAuthorize("hasRole('FIELD')")
+	public List<IssueSummary> myAssigned(@AuthenticationPrincipal Object principal) {
+		Long userId = (Long) principal;
+		return issueQueryService.listAssigned(userId);
+	}
+
 	@GetMapping("/issues/{id}")
 	@PreAuthorize("isAuthenticated()")
 	public IssueDetailResponse detail(@PathVariable Long id,

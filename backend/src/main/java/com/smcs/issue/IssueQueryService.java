@@ -108,6 +108,33 @@ public class IssueQueryService {
 	}
 
 	/**
+	 * Issues assigned to {@code userId}, severity-ordered (URGENT→LOW, then createdAt asc).
+	 * Backs the field worker's mobile home (Story 2.5). No paging — a worker's queue is small.
+	 */
+	@Transactional(readOnly = true)
+	public List<IssueSummary> listAssigned(Long userId) {
+		Specification<Issue> assignedToUser = (root, query, cb) -> cb.equal(root.get("assignedTo"), userId);
+		List<Issue> issues = issueRepository.findAll(assignedToUser.and(IssueSpecifications.defaultOrder()));
+
+		Map<Long, String> categoryNames = categoryRepository.findAll().stream()
+				.collect(Collectors.toMap(Category::getId, Category::getName));
+		String assigneeName = userRepository.findById(userId).map(User::getDisplayName).orElse(null);
+
+		return issues.stream()
+				.map(i -> new IssueSummary(
+						i.getId(),
+						i.getTitle(),
+						categoryNames.get(i.getCategoryL1Id()),
+						categoryNames.get(i.getCategoryL2Id()),
+						categoryNames.get(i.getCategoryL3Id()),
+						i.getPriority(),
+						i.getStatus(),
+						assigneeName,
+						i.getCreatedAt()))
+				.toList();
+	}
+
+	/**
 	 * Full issue detail. Caller PII is decrypted by the JPA converter on read but only
 	 * surfaced for privileged (AGENT/ADMIN) requests; FIELD gets null (Deviation #2).
 	 */
