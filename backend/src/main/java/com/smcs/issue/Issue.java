@@ -119,11 +119,16 @@ public class Issue {
 		}
 	}
 
-	/** Moves to {@code next}; transitioning to DONE stamps {@code resolvedAt} (Story 2.4). */
+	/**
+	 * Moves to {@code next}. DONE stamps {@code resolvedAt} (Story 2.4); reopening to
+	 * IN_PROGRESS clears it — no longer resolved (Story 2.7).
+	 */
 	public void transitionTo(IssueStatus next) {
 		this.status = next;
 		if (next == IssueStatus.DONE) {
 			this.resolvedAt = Instant.now();
+		} else if (next == IssueStatus.IN_PROGRESS) {
+			this.resolvedAt = null;
 		}
 	}
 

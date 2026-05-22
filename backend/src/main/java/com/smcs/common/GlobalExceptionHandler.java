@@ -11,6 +11,7 @@ import com.smcs.issue.InvalidAssigneeException;
 import com.smcs.issue.IssueForbiddenException;
 import com.smcs.issue.IssueNotFoundException;
 import com.smcs.issue.IssueTransitionException;
+import com.smcs.issue.ReopenReasonRequiredException;
 import com.smcs.notification.NotificationNotFoundException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.security.access.AccessDeniedException;
@@ -83,6 +84,12 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ErrorResponse> handleInvalidTransition(IssueTransitionException ex) {
 		return ResponseEntity.status(HttpStatus.CONFLICT)
 				.body(ErrorResponse.of("INVALID_TRANSITION", "This status transition is not allowed."));
+	}
+
+	@ExceptionHandler(ReopenReasonRequiredException.class)
+	public ResponseEntity<ErrorResponse> handleReopenReason(ReopenReasonRequiredException ex) {
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+				.body(ErrorResponse.of("REOPEN_REASON_REQUIRED", "A reason is required to reopen an issue."));
 	}
 
 	@ExceptionHandler(InvalidAssigneeException.class)
