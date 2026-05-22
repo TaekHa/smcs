@@ -78,6 +78,7 @@ class MeAssignedIntegrationTest {
 
 	@BeforeEach
 	void seed() throws Exception {
+		jdbc.update("DELETE FROM notifications");
 		jdbc.update("DELETE FROM issue_events");
 		jdbc.update("DELETE FROM issues");
 		long low = createIssue("점검건", "LOW");
