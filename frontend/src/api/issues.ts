@@ -2,6 +2,7 @@ import { apiClient } from './client';
 import type {
   AddCommentRequest,
   AssignRequest,
+  Attachment,
   Comment,
   CreateIssueRequest,
   IssueActivity,
@@ -12,6 +13,7 @@ import type {
   Page,
   TransitionRequest,
 } from '../types/issue';
+import type { AxiosProgressEvent } from 'axios';
 
 export async function createIssue(req: CreateIssueRequest): Promise<IssueResponse> {
   const res = await apiClient.post<IssueResponse>('/issues', req);
@@ -54,5 +56,19 @@ export async function assignIssue(id: number, req: AssignRequest): Promise<Issue
 
 export async function transitionIssue(id: number, req: TransitionRequest): Promise<IssueDetail> {
   const res = await apiClient.post<IssueDetail>(`/issues/${id}/transition`, req);
+  return res.data;
+}
+
+export async function uploadAttachment(
+  id: number,
+  file: File,
+  onProgress?: (e: AxiosProgressEvent) => void
+): Promise<Attachment> {
+  const form = new FormData();
+  form.append('file', file);
+  const res = await apiClient.post<Attachment>(`/issues/${id}/attachments`, form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    onUploadProgress: onProgress,
+  });
   return res.data;
 }

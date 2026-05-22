@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.time.Instant;
 
@@ -42,6 +43,22 @@ public class Attachment {
 	private Instant createdAt;
 
 	protected Attachment() {
+	}
+
+	/** Creates a new attachment (Story 2.6 upload). {@code filename} = relative path {@code yyyy/MM/{uuid}.{ext}}. */
+	public Attachment(Long issueId, Long uploaderId, String filename, String originalName,
+			String mimeType, Long sizeBytes) {
+		this.issueId = issueId;
+		this.uploaderId = uploaderId;
+		this.filename = filename;
+		this.originalName = originalName;
+		this.mimeType = mimeType;
+		this.sizeBytes = sizeBytes;
+	}
+
+	@PrePersist
+	void onCreate() {
+		this.createdAt = Instant.now();
 	}
 
 	public Long getId() {

@@ -40,7 +40,7 @@ public class CommentService {
 	public CommentResponse addComment(Long issueId, Long currentUserId, boolean privileged, AddCommentRequest req) {
 		Issue issue = accessGuard.requireAccessible(issueId, currentUserId, privileged);
 		Comment saved = commentRepository.save(
-				new Comment(issueId, currentUserId, req.body(), CommentKind.NOTE));
+				new Comment(issueId, currentUserId, req.body(), req.resolvedKind()));
 		issueEventRepository.save(
 				new IssueEvent(issueId, currentUserId, IssueEventType.COMMENTED, null, null));
 		notificationService.onCommented(issue, currentUserId);

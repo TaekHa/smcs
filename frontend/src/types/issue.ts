@@ -113,6 +113,7 @@ export interface IssueDetail {
 
 export interface AddCommentRequest {
   body: string;
+  kind?: CommentKind; // default NOTE; mobile field action sends FIELD_ACTION (Story 2.6)
 }
 
 // ── Story 2.4: assignment / transition ─────────────────────────────────────

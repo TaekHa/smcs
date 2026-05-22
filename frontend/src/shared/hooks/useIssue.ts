@@ -1,10 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { AxiosProgressEvent } from 'axios';
 import {
   addComment,
   assignIssue,
   getIssue,
   listIssueEvents,
   transitionIssue,
+  uploadAttachment,
 } from '../../api/issues';
 import type { AddCommentRequest, AssignRequest, TransitionRequest } from '../../types/issue';
 
@@ -56,6 +58,18 @@ export function useTransitionIssue(id: number) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (req: TransitionRequest) => transitionIssue(id, req),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['issue', id] });
+    },
+  });
+}
+
+/** Upload an attachment image (Story 2.6). Invalidates the issue so the gallery refreshes. */
+export function useUploadAttachment(id: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { file: File; onProgress?: (e: AxiosProgressEvent) => void }) =>
+      uploadAttachment(id, vars.file, vars.onProgress),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['issue', id] });
     },

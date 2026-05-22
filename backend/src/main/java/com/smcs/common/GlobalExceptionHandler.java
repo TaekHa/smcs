@@ -4,11 +4,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import com.smcs.attachment.AttachmentLimitException;
+import com.smcs.attachment.AttachmentNotFoundException;
+import com.smcs.attachment.InvalidImageException;
 import com.smcs.issue.InvalidAssigneeException;
 import com.smcs.issue.IssueForbiddenException;
 import com.smcs.issue.IssueNotFoundException;
 import com.smcs.issue.IssueTransitionException;
 import com.smcs.notification.NotificationNotFoundException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.AuthenticationException;
@@ -91,6 +95,30 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ErrorResponse> handleNotificationNotFound(NotificationNotFoundException ex) {
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)
 				.body(ErrorResponse.of("NOTIFICATION_NOT_FOUND", "Notification not found."));
+	}
+
+	@ExceptionHandler(InvalidImageException.class)
+	public ResponseEntity<ErrorResponse> handleInvalidImage(InvalidImageException ex) {
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+				.body(ErrorResponse.of("INVALID_IMAGE", "Only JPEG/PNG images are allowed."));
+	}
+
+	@ExceptionHandler(AttachmentLimitException.class)
+	public ResponseEntity<ErrorResponse> handleAttachmentLimit(AttachmentLimitException ex) {
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+				.body(ErrorResponse.of("ATTACHMENT_LIMIT", "This issue already has the maximum of 10 attachments."));
+	}
+
+	@ExceptionHandler(AttachmentNotFoundException.class)
+	public ResponseEntity<ErrorResponse> handleAttachmentNotFound(AttachmentNotFoundException ex) {
+		return ResponseEntity.status(HttpStatus.NOT_FOUND)
+				.body(ErrorResponse.of("ATTACHMENT_NOT_FOUND", "Attachment not found."));
+	}
+
+	@ExceptionHandler(MaxUploadSizeExceededException.class)
+	public ResponseEntity<ErrorResponse> handleMaxUpload(MaxUploadSizeExceededException ex) {
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+				.body(ErrorResponse.of("IMAGE_TOO_LARGE", "Image exceeds the 10MB limit."));
 	}
 
 	@ExceptionHandler(Exception.class)
