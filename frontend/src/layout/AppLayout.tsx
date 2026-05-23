@@ -51,6 +51,7 @@ export function AppLayout({ children }: AppLayoutProps) {
               {user && (user.role === 'FIELD' || user.role === 'ADMIN') && (
                 <Link to="/m">내 작업</Link>
               )}
+              {user && user.role === 'ADMIN' && <Link to="/reports">보관함</Link>}
             </Space>
           </nav>
         </Space>

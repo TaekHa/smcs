@@ -35,6 +35,9 @@ const MobileFieldDetailView = lazy(() =>
 const NotificationsView = lazy(() =>
   import('./features/notifications/NotificationsView').then((m) => ({ default: m.NotificationsView }))
 );
+const ReportsView = lazy(() =>
+  import('./features/reports/ReportsView').then((m) => ({ default: m.ReportsView }))
+);
 
 function RouteFallback() {
   return (
@@ -141,10 +144,23 @@ export function AppRoutes() {
         }
       />
 
+      <Route
+        path="/reports"
+        element={
+          <RequireAuth>
+            <RequireRole roles={['ADMIN']}>
+              <AppLayout>
+                <ReportsView />
+              </AppLayout>
+            </RequireRole>
+          </RequireAuth>
+        }
+      />
+
       <Route path="/403" element={<ForbiddenView />} />
 
       {/* Future routes (Epic 2~4):
-          /dashboard, /reports, /reports/:kind/:date,
+          /dashboard,
           /admin/users, /admin/categories
           NOTE: /issues/:id is RequireAuth-only (no RequireRole) so FIELD assignees
           can reach it; the backend enforces §6.3 ownership (403 ISSUE_FORBIDDEN).
