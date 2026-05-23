@@ -27,6 +27,8 @@ import org.apache.pdfbox.io.RandomAccessReadBuffer;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
 /**
@@ -48,7 +50,7 @@ class ReportServiceTest {
 		Issue i1 = issue(1L, "전원 차단됨", Priority.URGENT, 100L);
 		Issue i2 = issue(2L, "VoIP 끊김", Priority.HIGH, null);
 		User u = user(100L, "김현장");
-		when(issueRepository.findAll(any(Specification.class))).thenReturn(List.of(i1, i2));
+		stubOpenIssuesPage(List.of(i1, i2), 2L);
 		when(userRepository.findAllById(any())).thenReturn(List.of(u));
 
 		byte[] pdf = service.generateDaily(LocalDate.of(2026, 5, 21));
@@ -73,7 +75,7 @@ class ReportServiceTest {
 	@Test
 	void generateWeeklyRendersWeeklyTitleAndPeriod() throws Exception {
 		stubStats(sampleStats());
-		when(issueRepository.findAll(any(Specification.class))).thenReturn(List.of());
+		stubOpenIssuesPage(List.of(), 0L);
 		when(userRepository.findAllById(any())).thenReturn(List.of());
 
 		byte[] pdf = service.generateWeekly(2026, 21);
@@ -86,13 +88,14 @@ class ReportServiceTest {
 
 	@Test
 	void overflowFootnoteShownWhenOpenListExceedsCap() throws Exception {
+		// TD-2: the page returns at most MAX+1 rows, the true total comes from count(spec).
 		stubStats(sampleStats());
-		List<Issue> many = new ArrayList<>();
-		for (int i = 1; i <= ReportService.OPEN_LIST_MAX + 5; i++) {
-			many.add(issue((long) i, "이슈 " + i, Priority.NORMAL, 100L));
+		List<Issue> paged = new ArrayList<>();
+		for (int i = 1; i <= ReportService.OPEN_LIST_MAX + 1; i++) {
+			paged.add(issue((long) i, "이슈 " + i, Priority.NORMAL, 100L));
 		}
 		User u = user(100L, "담당자A");
-		when(issueRepository.findAll(any(Specification.class))).thenReturn(many);
+		stubOpenIssuesPage(paged, ReportService.OPEN_LIST_MAX + 5L); // total = 35, paged = 31
 		when(userRepository.findAllById(any())).thenReturn(List.of(u));
 
 		byte[] pdf = service.generateDaily(LocalDate.of(2026, 5, 21));
@@ -102,9 +105,25 @@ class ReportServiceTest {
 	}
 
 	@Test
+	void openListUnderCapShowsNoFootnote() throws Exception {
+		// TD-2 regression: total ≤ MAX must not render a footnote.
+		stubStats(sampleStats());
+		List<Issue> few = List.of(issue(1L, "이슈A", Priority.NORMAL, 100L));
+		User u = user(100L, "담당자A");
+		stubOpenIssuesPage(few, 1L);
+		when(userRepository.findAllById(any())).thenReturn(List.of(u));
+
+		byte[] pdf = service.generateDaily(LocalDate.of(2026, 5, 21));
+
+		String text = textOf(pdf);
+		assertThat(text).doesNotContain("생략");
+		assertThat(text).contains("이슈A");
+	}
+
+	@Test
 	void emptyOpenListRendersDataAbsentLine() throws Exception {
 		stubStats(emptyStats());
-		when(issueRepository.findAll(any(Specification.class))).thenReturn(List.of());
+		stubOpenIssuesPage(List.of(), 0L);
 		when(userRepository.findAllById(any())).thenReturn(List.of());
 
 		byte[] pdf = service.generateDaily(LocalDate.of(2026, 5, 21));
@@ -119,6 +138,13 @@ class ReportServiceTest {
 
 	private void stubStats(DashboardStats stats) {
 		when(statsService.aggregate(any(Instant.class), any(Instant.class))).thenReturn(stats);
+	}
+
+	@SuppressWarnings("unchecked")
+	private void stubOpenIssuesPage(List<Issue> pagedRows, long total) {
+		when(issueRepository.findAll(any(Specification.class), any(Pageable.class)))
+				.thenReturn(new PageImpl<>(pagedRows));
+		when(issueRepository.count(any(Specification.class))).thenReturn(total);
 	}
 
 	private static DashboardStats sampleStats() {
