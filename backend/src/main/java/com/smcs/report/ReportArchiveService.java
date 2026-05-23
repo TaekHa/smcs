@@ -37,6 +37,7 @@ public class ReportArchiveService {
 	}
 
 	/** Generates and archives the daily report for {@code date} (KST). */
+	@Transactional
 	public void generateAndStoreDaily(LocalDate date) {
 		ReportPeriod period = ReportPeriod.forDate(date);
 		runArchive(period, () -> reportService.generateDaily(date),
@@ -45,6 +46,7 @@ public class ReportArchiveService {
 	}
 
 	/** Generates and archives the weekly report for the given ISO {@code (weekBasedYear, weekOfYear)}. */
+	@Transactional
 	public void generateAndStoreWeekly(int weekBasedYear, int weekOfYear) {
 		ReportPeriod period = ReportPeriod.forWeek(weekBasedYear, weekOfYear);
 		runArchive(period, () -> reportService.generateWeekly(weekBasedYear, weekOfYear),
@@ -52,7 +54,8 @@ public class ReportArchiveService {
 				"주간 보고서 생성에 실패했습니다 (기간: " + period.periodKey() + ")");
 	}
 
-	@Transactional
+	// @Transactional moved to the public entry points above (TD-2 Task 1) — Spring AOP can't
+	// see self-invocations, so leaving it here would silently fail dirty checking on re-runs.
 	void runArchive(ReportPeriod period, PdfSupplier supplier, String readyMessage, String failedMessage) {
 		try {
 			byte[] pdf = supplier.get();

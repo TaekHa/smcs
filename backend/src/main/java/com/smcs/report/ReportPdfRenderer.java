@@ -71,7 +71,7 @@ final class ReportPdfRenderer {
 			cursor.gap();
 
 			cursor.writeHeading("미처리 리스트");
-			writeOpenIssueRows(cursor, data.openIssues());
+			writeOpenIssueRows(cursor, data.openIssues(), data.totalOpenCount());
 
 			cursor.close();
 			doc.save(out);
@@ -101,22 +101,24 @@ final class ReportPdfRenderer {
 		}
 	}
 
-	private static void writeOpenIssueRows(PageCursor cursor, List<OpenIssueRow> rows) throws IOException {
-		if (rows.isEmpty()) {
+	private static void writeOpenIssueRows(PageCursor cursor, List<OpenIssueRow> rows, long totalOpenCount)
+			throws IOException {
+		if (totalOpenCount <= 0) {
 			cursor.writeBody("데이터 없음");
 			return;
 		}
 		// 컬럼: ID / 제목 / 우선순위 / 담당자 (AC3 — PO 정제 2026-05-23)
 		cursor.writeBody("ID | 제목 | 우선순위 | 담당자");
-		int shown = Math.min(rows.size(), ReportService.OPEN_LIST_MAX);
+		int shown = (int) Math.min(rows.size(), ReportService.OPEN_LIST_MAX);
 		for (int i = 0; i < shown; i++) {
 			OpenIssueRow r = rows.get(i);
 			cursor.writeBody("#" + r.id() + " | " + r.title()
 					+ " | " + r.priority()
 					+ " | " + (r.assigneeName() == null ? "(미배정)" : r.assigneeName()));
 		}
-		if (rows.size() > ReportService.OPEN_LIST_MAX) {
-			int hidden = rows.size() - ReportService.OPEN_LIST_MAX;
+		// TD-2: footnote uses the true total, not the paged slice size, so "이하 N건 생략" is accurate.
+		long hidden = totalOpenCount - ReportService.OPEN_LIST_MAX;
+		if (hidden > 0) {
 			cursor.writeBody("... 이하 " + hidden + "건 생략 — 보관함 PDF 참조");
 		}
 	}

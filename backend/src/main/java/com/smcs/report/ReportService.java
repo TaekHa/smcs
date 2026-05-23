@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -66,24 +67,38 @@ public class ReportService {
 	private byte[] generate(ReportPeriod period) {
 		StatsRange range = period.range();
 		DashboardStats stats = statsService.aggregate(range.from(), range.to());
-		List<OpenIssueRow> openIssues = loadOpenIssues();
-		ReportData data = new ReportData(period.kind(), period.periodKey(), period.displayPeriod(), stats, openIssues);
+		OpenIssuesPage open = loadOpenIssues();
+		ReportData data = new ReportData(period.kind(), period.periodKey(), period.displayPeriod(),
+				stats, open.rows(), open.total());
 		return renderer.render(data);
 	}
 
-	private List<OpenIssueRow> loadOpenIssues() {
+	/**
+	 * TD-2: load only {@code OPEN_LIST_MAX + 1} rows (memory-safe under operational growth) and
+	 * fetch the true total via a separate {@code count} query so the renderer's footnote can
+	 * report an accurate "이하 N건 생략".
+	 */
+	private OpenIssuesPage loadOpenIssues() {
 		Specification<Issue> open = (root, query, cb) -> root.get("status").in(openStatuses());
-		List<Issue> issues = issueRepository.findAll(open.and(severityThenCreatedAsc()));
+		Specification<Issue> ordered = open.and(severityThenCreatedAsc());
+
+		List<Issue> issues = issueRepository
+				.findAll(ordered, PageRequest.of(0, OPEN_LIST_MAX + 1))
+				.getContent();
+		long total = issueRepository.count(open);
 
 		List<Long> assigneeIds = issues.stream().map(Issue::getAssignedTo).filter(Objects::nonNull).distinct().toList();
 		Map<Long, String> names = userRepository.findAllById(assigneeIds).stream()
 				.collect(Collectors.toMap(User::getId, User::getDisplayName));
 
-		return issues.stream()
+		List<OpenIssueRow> rows = issues.stream()
 				.map(i -> new OpenIssueRow(i.getId(), i.getTitle(), i.getPriority(),
 						i.getAssignedTo() == null ? null : names.get(i.getAssignedTo())))
 				.toList();
+		return new OpenIssuesPage(rows, total);
 	}
+
+	private record OpenIssuesPage(List<OpenIssueRow> rows, long total) {}
 
 	private static List<IssueStatus> openStatuses() {
 		return List.of(IssueStatus.NEW, IssueStatus.ASSIGNED, IssueStatus.IN_PROGRESS);

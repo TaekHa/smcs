@@ -117,9 +117,31 @@ class ReportArchiveIntegrationTest {
 	void rerunUpsertsTheSameRowAndKeepsCreatedAt() throws Exception {
 		LocalDate yesterday = LocalDate.now(KST).minusDays(1);
 		archiveService.generateAndStoreDaily(yesterday);
-		Instant firstCreatedAt = reportRepository
+		Report first = reportRepository
 				.findByKindAndPeriodKey(com.smcs.report.dto.ReportKind.DAILY, yesterday.toString())
-				.orElseThrow().getCreatedAt();
+				.orElseThrow();
+		Instant firstCreatedAt = first.getCreatedAt();
+		long firstSize = first.getSizeBytes();
+
+		// TD-2 Task 1: change the source data so the second PDF is a different size. Without the
+		// @Transactional fix, existing.replaceFile() runs on a detached entity and size_bytes
+		// would stay at firstSize. Adding a fresh open issue shifts the "미처리 리스트" rows and
+		// thus the PDF byte length.
+		long agentId = userRepository.findByUsername("agent1").orElseThrow().getId();
+		long fieldId = userRepository.findByUsername("field1").orElseThrow().getId();
+		long catL1 = jdbc.queryForObject(
+				"SELECT id FROM categories WHERE level = 1 ORDER BY sort_order LIMIT 1", Long.class);
+		long catL2 = jdbc.queryForObject(
+				"SELECT id FROM categories WHERE level = 2 ORDER BY sort_order LIMIT 1", Long.class);
+		long catL3 = jdbc.queryForObject(
+				"SELECT id FROM categories WHERE level = 3 ORDER BY sort_order LIMIT 1", Long.class);
+		Instant base = LocalDate.now(KST).atTime(12, 0).atZone(KST).toInstant();
+		jdbc.update(
+				"INSERT INTO issues (title, description, category_l1_id, category_l2_id, category_l3_id, "
+						+ "priority, status, created_by, assigned_to, resolved_at, created_at, updated_at) "
+						+ "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+				"두번째 호출 시드 추가 이슈", null, catL1, catL2, catL3,
+				"URGENT", "NEW", agentId, fieldId, null, ts(base), ts(base));
 
 		Thread.sleep(10); // ensure a measurable gap in case createdAt were (incorrectly) reset
 		archiveService.generateAndStoreDaily(yesterday);
@@ -129,10 +151,12 @@ class ReportArchiveIntegrationTest {
 				Integer.class, yesterday.toString());
 		assertThat(rows).isEqualTo(1); // upsert — no new row
 
-		Instant afterRerun = reportRepository
+		Report afterRerun = reportRepository
 				.findByKindAndPeriodKey(com.smcs.report.dto.ReportKind.DAILY, yesterday.toString())
-				.orElseThrow().getCreatedAt();
-		assertThat(afterRerun).isEqualTo(firstCreatedAt); // createdAt preserved
+				.orElseThrow();
+		assertThat(afterRerun.getCreatedAt()).isEqualTo(firstCreatedAt); // createdAt preserved
+		// TD-2 Task 1 — size_bytes must reflect the regenerated PDF, not the first run.
+		assertThat(afterRerun.getSizeBytes()).isNotEqualTo(firstSize);
 
 		// Two REPORT_READY rows (one per run) per active ADMIN — every successful archive alerts.
 		Integer readyAlerts = jdbc.queryForObject(
