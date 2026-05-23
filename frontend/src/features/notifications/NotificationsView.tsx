@@ -15,7 +15,8 @@ export function NotificationsView() {
 
   function open(n: Notification) {
     markRead.mutate(n.id);
-    navigate(`/issues/${n.issueId}`);
+    // Story 3.4/3.5 — report-scoped notifications (issueId == null) link to the archive.
+    navigate(n.issueId == null ? '/reports' : `/issues/${n.issueId}`);
   }
 
   return (

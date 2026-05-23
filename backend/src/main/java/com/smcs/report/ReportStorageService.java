@@ -8,6 +8,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 
 /**
@@ -23,6 +25,28 @@ public class ReportStorageService {
 
 	public ReportStorageService(@Value("${smcs.files.dir}") String dir) {
 		this.baseDir = Paths.get(dir).toAbsolutePath().normalize();
+	}
+
+	/** Resolves a known relative path to a readable resource (traversal-guarded — Story 3.5). */
+	public Resource load(String relativePath) {
+		Path target = baseDir.resolve(relativePath).normalize();
+		if (!target.startsWith(baseDir)) {
+			throw new IllegalArgumentException("path traversal blocked");
+		}
+		return new FileSystemResource(target);
+	}
+
+	/** Best-effort cleanup of an expired report file (Story 3.5 AC5). Missing file is fine. */
+	public void delete(String relativePath) {
+		Path target = baseDir.resolve(relativePath).normalize();
+		if (!target.startsWith(baseDir)) {
+			throw new IllegalArgumentException("path traversal blocked");
+		}
+		try {
+			Files.deleteIfExists(target);
+		} catch (IOException ignored) {
+			// best-effort — metadata cleanup still proceeds (Dev Notes Task 4)
+		}
 	}
 
 	/** Writes {@code pdf} and returns the relative path stored in {@code reports.file_path}. */

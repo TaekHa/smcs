@@ -36,3 +36,8 @@ smcs:
     # Override via SMCS_REPORTS_*_CRON env vars (Spring cron, 6 fields, zone KST).
     daily-cron: ${SMCS_REPORTS_DAILY_CRON:0 0 8 * * *}
     weekly-cron: ${SMCS_REPORTS_WEEKLY_CRON:0 0 8 * * MON}
+    # Story 3.5 — 03:00 KST daily cleanup of reports older than retention-days.
+    # First production deploys SHOULD start with this cron disabled (e.g. "0 0 5 31 2 *",
+    # an unreachable date) until the archive has been verified for ~1 week (PO Deviation #8).
+    cleanup-cron: ${SMCS_REPORTS_CLEANUP_CRON:0 0 3 * * *}
+    retention-days: ${SMCS_REPORTS_RETENTION_DAYS:90}

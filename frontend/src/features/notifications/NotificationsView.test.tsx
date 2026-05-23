@@ -40,6 +40,7 @@ function renderView() {
       <Routes>
         <Route path="/notifications" element={<NotificationsView />} />
         <Route path="/issues/:id" element={<div>ISSUE 42 DETAIL</div>} />
+        <Route path="/reports" element={<div>REPORTS ARCHIVE</div>} />
       </Routes>
     </MemoryRouter>
   );
@@ -80,5 +81,33 @@ describe('NotificationsView', () => {
     });
     renderView();
     expect(screen.getByText('알림이 없습니다')).toBeInTheDocument();
+  });
+
+  it('routes REPORT_READY notifications (issueId=null) to /reports (Story 3.5 §5.7)', async () => {
+    useNotificationsMock.mockReturnValue({
+      data: {
+        content: [
+          {
+            id: 11,
+            kind: 'REPORT_READY',
+            issueId: null,
+            actorName: null,
+            message: '어제 일간 보고서(2026-05-22)가 준비되었습니다',
+            readAt: null,
+            createdAt: '2026-05-23T07:00:00Z',
+          },
+        ],
+        totalElements: 1,
+        totalPages: 1,
+        number: 0,
+        size: 20,
+      },
+      isLoading: false,
+    });
+    const user = userEvent.setup();
+    renderView();
+    await user.click(screen.getByText('어제 일간 보고서(2026-05-22)가 준비되었습니다'));
+    expect(markReadMock).toHaveBeenCalledWith(11);
+    await waitFor(() => expect(screen.getByText('REPORTS ARCHIVE')).toBeInTheDocument());
   });
 });

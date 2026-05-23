@@ -13,6 +13,7 @@ import com.smcs.issue.IssueNotFoundException;
 import com.smcs.issue.IssueTransitionException;
 import com.smcs.issue.ReopenReasonRequiredException;
 import com.smcs.notification.NotificationNotFoundException;
+import com.smcs.report.ReportNotFoundException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.LockedException;
@@ -102,6 +103,12 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ErrorResponse> handleNotificationNotFound(NotificationNotFoundException ex) {
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)
 				.body(ErrorResponse.of("NOTIFICATION_NOT_FOUND", "Notification not found."));
+	}
+
+	@ExceptionHandler(ReportNotFoundException.class)
+	public ResponseEntity<ErrorResponse> handleReportNotFound(ReportNotFoundException ex) {
+		return ResponseEntity.status(HttpStatus.NOT_FOUND)
+				.body(ErrorResponse.of("REPORT_NOT_FOUND", "Report not found."));
 	}
 
 	@ExceptionHandler(InvalidImageException.class)
