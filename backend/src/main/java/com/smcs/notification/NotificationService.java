@@ -54,6 +54,17 @@ public class NotificationService {
 				actorName(actorId) + "님이 #" + issue.getId() + " 이슈를 재오픈했습니다");
 	}
 
+	/**
+	 * Fan-out a system event to every active ADMIN (Story 3.4 — report archive alerts).
+	 * No owning issue, no actor. Participates in the caller's transaction.
+	 */
+	public void notifyAdmins(NotificationKind kind, String message) {
+		List<User> admins = userRepository.findByRoleAndActiveTrue(User.Role.ADMIN);
+		for (User admin : admins) {
+			notificationRepository.save(new Notification(admin.getId(), kind, message));
+		}
+	}
+
 	/** Stakeholders = {assignee, creator} − actor (no self-notify, deduped). */
 	private void fanOut(Issue issue, NotificationKind kind, Long actorId, String message) {
 		Set<Long> recipients = new HashSet<>();

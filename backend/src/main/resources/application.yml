@@ -31,3 +31,8 @@ smcs:
   crypto:
     data-key: ${SMCS_DATA_KEY:}
     hmac-key: ${SMCS_HMAC_KEY:}
+  reports:
+    # Story 3.4 — auto-generate yesterday's daily / last week's weekly report (KST).
+    # Override via SMCS_REPORTS_*_CRON env vars (Spring cron, 6 fields, zone KST).
+    daily-cron: ${SMCS_REPORTS_DAILY_CRON:0 0 8 * * *}
+    weekly-cron: ${SMCS_REPORTS_WEEKLY_CRON:0 0 8 * * MON}

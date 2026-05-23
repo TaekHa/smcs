@@ -27,7 +27,8 @@ public class Notification {
 	@Column(nullable = false, length = 30)
 	private NotificationKind kind;
 
-	@Column(name = "issue_id", nullable = false)
+	/** Nullable since Story 3.4 — report alerts (REPORT_READY/REPORT_FAILED) have no owning issue. */
+	@Column(name = "issue_id")
 	private Long issueId;
 
 	@Column(name = "actor_id")
@@ -51,6 +52,11 @@ public class Notification {
 		this.issueId = issueId;
 		this.actorId = actorId;
 		this.message = message;
+	}
+
+	/** Report-scoped notification (Story 3.4) — no owning issue, no actor (system event). */
+	public Notification(Long recipientId, NotificationKind kind, String message) {
+		this(recipientId, kind, null, null, message);
 	}
 
 	@PrePersist
