@@ -1,6 +1,6 @@
 # Story TD-2: Story 3.3 + 3.4 QA 캐리오버 — report 도메인 견고화 (Brownfield Addition)
 
-## Status: Review
+## Status: Done
 
 > 출처: **Story 3.4 QA 잔여 #1**(Quinn, PR #16) + **Story 3.3 QA 잔여 #1**(Quinn, PR #15) — 둘 다 비차단으로 머지됐고, Epic 3 가 운영 단계로 가기 전 한 PR 로 정리. TD-1 패턴(2.1 carry-over 묶음) 일관.
 
@@ -114,6 +114,31 @@
 
 | Date       | Version | Description | Author |
 | :--------- | :------ | :---------- | :----- |
+| 2026-05-23 | 0.4 | QA (Quinn) 게이트 PASS · Status Review→Done. PR #18 CI green(run 26330919937, Backend 1m51s + Frontend 52s). 코드 추적 R1~R4 정적 검수 + CI 산출물 확인(작성자 주장 비의존). 결함 0, 잔여 관찰 1건(비차단). 자세한 결과는 QA Results 섹션. 3.3 QA #1 + 3.4 QA #1 모두 해소. | Quinn (QA) |
 | 2026-05-23 | 0.3 | Implemented by Dev (James). Task 1 = ReportArchiveService.@Transactional public 메서드(generateAndStoreDaily/Weekly)로 이동, runArchive @Tx 제거(self-invocation 무효 회복). Task 2 = ReportService.loadOpenIssues 페이징(findAll(spec, PageRequest.of(0, MAX+1)) + count(spec)) + ReportData totalOpenCount 필드(5→6) + Renderer writeOpenIssueRows(rows, total) footnote = Math.max(0, total-MAX) 정확. 단위 23/23 통과(신규 openListUnderCapShowsNoFootnote 회귀), build -x test 그린. 통합 rerun 보강(size_bytes 갱신 검증) CI 대기. 프론트 무영향. Status Approved→Review. | James (Dev) |
 | 2026-05-23 | 0.2 | Validated & Approved by PO (Sarah) — 간소 검토(AC 변경 0, 마이그레이션 0, DTO/엔드포인트 응답 불변, 프론트 무영향 → po-master-checklist 종합 불요). 본 TD-2 는 PO 자신의 분리 결정(Story 3.4 v0.2 Deviation #1·#4)의 후속 실행 — TD-1 패턴 일관. **결정**: Task 우선순위(1=안전 → 2=메모리) 그대로 채택, ReportData 단일 필드 추가 + Renderer 시그니처 1개 보강 최소 변경, 통합 테스트 보강(size_bytes 갱신 + PDF footnote N 정확성) 그대로. 출처 인용 정확(3.3/3.4 QA Results 각 잔여 #1). 추가 Deviation 무. Status Draft→Approved. 즉시 Dev 핸드오프 가능. | Sarah (PO) |
 | 2026-05-23 | 0.1 | Initial draft by SM (Bob). TD-2 = Story 3.3/3.4 QA 잔여 관찰 #1 묶음(TD-1 패턴 일관). Task 1 = ReportArchiveService @Transactional self-invocation 해소(annotation을 public 메서드로 이동). Task 2 = ReportService.loadOpenIssues 페이징(MAX+1 + count Specification) + ReportData totalOpenCount 필드 추가 + ReportPdfRenderer footnote 정확성. 마이그레이션 0, AC/엔드포인트/DTO 변경 0, 프론트 무영향. 회귀 = 단위 + 통합 CI + 프론트 102. PO 비준 필요(분리 결정 번복 아님 — Sarah Deviation #4 결정대로 별도 스토리로 처리). | Bob (SM) |
+
+## QA Results
+
+**검수자: Quinn (QA Test Architect) · 2026-05-23 · 게이트: 🟢 PASS · Status Done (PR #18 CI green run 26330919937)**
+
+**CI 확정**: Backend(Gradle+Java21) pass 1m51s — `./gradlew build --no-daemon` BUILD SUCCESSFUL = 단위(ReportServiceTest 5 + ReportArchiveServiceTest 5 + ReportPeriodTest 6 + ReportCleanupServiceTest 2 + StatsPeriodTest 5 = 23) + 통합(ReportArchiveIntegrationTest 보강 size_bytes 검증 + 기존 회귀 6종) Testcontainers Postgres 통과. Frontend pass 52s — 102/102(본 PR 백엔드 전용, 회귀 가드).
+
+코드를 직접 추적 검증(작성자 주장 비의존). 위험영역 R1~R4 (내부 리팩터):
+
+| 위험영역 | 검수 방법 | 결과 |
+| :--- | :--- | :--- |
+| R1 Task 1 — @Transactional self-invocation 회복 | `ReportArchiveService.generateAndStoreDaily(LocalDate)`/`generateAndStoreWeekly(int,int)` public 진입점 `@Transactional` 명시(정적). `runArchive(package-private)` `@Transactional` 제거 + 명시 주석("@Transactional moved... Spring AOP can't see self-invocations"). 통합 `rerunUpsertsTheSameRowAndKeepsCreatedAt` 보강 — 두 번째 호출 전 신규 이슈 INSERT → PDF 길이 변동 → `assertThat(afterRerun.getSizeBytes()).isNotEqualTo(firstSize)` 검증(이 fix 없으면 detached `existing.replaceFile()` 변경 미반영으로 stale). **CI 통과 = self-invocation fix 동작 입증.** | 🟢 PASS · CI 확인 |
+| R2 Task 2 — 페이징 + count + footnote 정확성 | `ReportService.loadOpenIssues` `findAll(ordered, PageRequest.of(0, OPEN_LIST_MAX+1)).getContent()` + `count(open)` 별도(JpaSpecificationExecutor 기본). `OpenIssuesPage(rows, total)` nested record 반환. `ReportData` totalOpenCount 필드 추가(5→6). `ReportPdfRenderer.writeOpenIssueRows(rows, total)` footnote = `Math.max(0, total - OPEN_LIST_MAX)` + `totalOpenCount <= 0` 빈상태 가드. 단위 `overflowFootnoteShownWhenOpenListExceedsCap` mock 갱신(paged 31 + total 35 → "이하 5건 생략") + 신규 `openListUnderCapShowsNoFootnote`(total 1 → footnote 미표기) | 🟢 PASS · CI 확인 |
+| R3 ReportData 시그니처 변경 영향 | record 5→6 필드 — 외부 호출 위치 1곳(`ReportService.generate(period)`)에서 모두 갱신. 프론트는 ReportData 직접 사용 안 함(API 응답은 PDF 바이트 + ReportSummary 만 — DTO 응답 모양 불변). | 🟢 PASS |
+| R4 회귀(Stats/Report/Notification/Issue/Attachment/ReportArchiveAccess + 프론트) | CI BUILD SUCCESSFUL = 단위 23/23 + 통합 6종 + 신규 통합 1종 보강 모두 그린. 프론트 102/102(본 PR 백엔드 전용). 마이그레이션 0 / 엔드포인트 0 / 응답 모양 0 — API 호출자 영향 0. | 🟢 PASS · CI 확인 |
+
+**잔여 관찰(비차단):**
+1. **통합 PDF footnote N 정확성 미검증** — 단위 `overflowFootnoteShownWhenOpenListExceedsCap` 가 PDFTextStripper 로 "이하 5건 생략" 추출 확인(논리적 일치). 통합에서 실 DB → 실 PDFBox 렌더 → 실 텍스트 추출 검증은 추가 안 함(시드 35건 INSERT + ReportController 호출 + 본문 grep 시나리오). MVP 비차단 — 단위가 동일 경로(PDFBox 라이브러리)를 호출하므로 회귀 위험 낮음. v2 에서 보강 가능.
+
+**결함 0.** AC 1~5 충족 — AC1(rerun size_bytes 갱신, CI 통합 검증), AC2(통합 size_bytes 갱신 assertion 보강 통과), AC3(loadOpenIssues 페이징 — JpaSpecificationExecutor 기본 메서드), AC4(footnote = Math.max(0, total-MAX) + 단위 회귀), AC5(단위 + 통합 회귀 그린, 마이그레이션/API 영향 0). PO Sarah 비준(v0.2) 그대로 반영.
+
+**Epic 3 영향**: 본 머지로 Story 3.3 QA 잔여 #1(loadOpenIssues 메모리 위험) + Story 3.4 QA 잔여 #1(runArchive @Tx self-invocation) 모두 해소 — 원본 스토리 파일 무수정(이력 보존, TD-1 선례). Epic 3 운영 안정성 회복.
+
+**게이트 확정:** PR #18 CI green(run 26330919937) + 코드 추적 검수 완료 → 게이트 PASS, Status Review→Done. 머지 준비 완료.
