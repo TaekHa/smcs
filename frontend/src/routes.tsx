@@ -38,6 +38,9 @@ const NotificationsView = lazy(() =>
 const ReportsView = lazy(() =>
   import('./features/reports/ReportsView').then((m) => ({ default: m.ReportsView }))
 );
+const DashboardView = lazy(() =>
+  import('./features/dashboard/DashboardView').then((m) => ({ default: m.DashboardView }))
+);
 
 function RouteFallback() {
   return (
@@ -157,10 +160,22 @@ export function AppRoutes() {
         }
       />
 
+      <Route
+        path="/dashboard"
+        element={
+          <RequireAuth>
+            <RequireRole roles={['ADMIN']}>
+              <AppLayout>
+                <DashboardView />
+              </AppLayout>
+            </RequireRole>
+          </RequireAuth>
+        }
+      />
+
       <Route path="/403" element={<ForbiddenView />} />
 
-      {/* Future routes (Epic 2~4):
-          /dashboard,
+      {/* Future routes (Epic 4):
           /admin/users, /admin/categories
           NOTE: /issues/:id is RequireAuth-only (no RequireRole) so FIELD assignees
           can reach it; the backend enforces §6.3 ownership (403 ISSUE_FORBIDDEN).
