@@ -17,6 +17,9 @@ import com.smcs.issue.export.ExportTooManyRowsException;
 import com.smcs.issue.export.UnsupportedFormatException;
 import com.smcs.notification.NotificationNotFoundException;
 import com.smcs.report.ReportNotFoundException;
+import com.smcs.user.DuplicateUsernameException;
+import com.smcs.user.SelfDeactivationForbiddenException;
+import com.smcs.user.UserNotFoundException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.LockedException;
@@ -132,6 +135,24 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ErrorResponse> handleCategoryNotFound(CategoryNotFoundException ex) {
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)
 				.body(ErrorResponse.of("CATEGORY_NOT_FOUND", "Category not found."));
+	}
+
+	@ExceptionHandler(UserNotFoundException.class)
+	public ResponseEntity<ErrorResponse> handleUserNotFound(UserNotFoundException ex) {
+		return ResponseEntity.status(HttpStatus.NOT_FOUND)
+				.body(ErrorResponse.of("USER_NOT_FOUND", "User not found."));
+	}
+
+	@ExceptionHandler(DuplicateUsernameException.class)
+	public ResponseEntity<ErrorResponse> handleDuplicateUsername(DuplicateUsernameException ex) {
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+				.body(ErrorResponse.of("DUPLICATE_USERNAME", "이미 사용 중인 사용자명입니다."));
+	}
+
+	@ExceptionHandler(SelfDeactivationForbiddenException.class)
+	public ResponseEntity<ErrorResponse> handleSelfDeactivation(SelfDeactivationForbiddenException ex) {
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+				.body(ErrorResponse.of("SELF_DEACTIVATION_FORBIDDEN", "본인 계정은 비활성화할 수 없습니다."));
 	}
 
 	@ExceptionHandler(InvalidImageException.class)

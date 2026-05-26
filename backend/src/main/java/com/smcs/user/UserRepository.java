@@ -12,4 +12,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
 	/** Active users for a role — Story 3.4 uses {@code ADMIN} for report-alert fan-out. */
 	List<User> findByRoleAndActiveTrue(User.Role role);
+
+	/** Admin list (Story 4.4) — includes inactive rows, newest first. */
+	List<User> findAllByOrderByCreatedAtDesc();
+
+	/** Pre-flight uniqueness check for admin create (Story 4.4) — explicit over CV exception. */
+	boolean existsByUsername(String username);
 }

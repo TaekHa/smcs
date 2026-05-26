@@ -56,6 +56,7 @@ export function AppLayout({ children }: AppLayoutProps) {
               {user && user.role === 'ADMIN' && (
                 <Link to="/admin/categories">카테고리 관리</Link>
               )}
+              {user && user.role === 'ADMIN' && <Link to="/admin/users">사용자 관리</Link>}
             </Space>
           </nav>
         </Space>
