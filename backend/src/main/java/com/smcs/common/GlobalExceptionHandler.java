@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import com.smcs.attachment.AttachmentLimitException;
 import com.smcs.attachment.AttachmentNotFoundException;
 import com.smcs.attachment.InvalidImageException;
+import com.smcs.category.CategoryNotFoundException;
 import com.smcs.issue.InvalidAssigneeException;
 import com.smcs.issue.IssueForbiddenException;
 import com.smcs.issue.IssueNotFoundException;
@@ -125,6 +126,12 @@ public class GlobalExceptionHandler {
 		return ResponseEntity.status(HttpStatus.BAD_REQUEST)
 				.body(ErrorResponse.of("UNSUPPORTED_FORMAT",
 						"format: only 'csv' is supported (got '" + ex.getFormat() + "')."));
+	}
+
+	@ExceptionHandler(CategoryNotFoundException.class)
+	public ResponseEntity<ErrorResponse> handleCategoryNotFound(CategoryNotFoundException ex) {
+		return ResponseEntity.status(HttpStatus.NOT_FOUND)
+				.body(ErrorResponse.of("CATEGORY_NOT_FOUND", "Category not found."));
 	}
 
 	@ExceptionHandler(InvalidImageException.class)

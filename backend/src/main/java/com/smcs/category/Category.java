@@ -6,10 +6,15 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /**
- * Maps the {@code categories} table (V2). {@code keywords} (jsonb) is intentionally
- * unmapped — unused by Story 2.1 and ddl-auto=validate only checks mapped attributes.
+ * Maps the {@code categories} table (V2). {@code keywords} (jsonb) feeds Story 4.2 auto
+ * category suggestion; Story 4.5 surfaces it through the admin upsert endpoint.
  */
 @Entity
 @Table(name = "categories")
@@ -28,6 +33,10 @@ public class Category {
 	@Column(nullable = false, length = 100)
 	private String name;
 
+	@JdbcTypeCode(SqlTypes.JSON)
+	@Column(name = "keywords", nullable = false, columnDefinition = "jsonb")
+	private List<String> keywords;
+
 	@Column(name = "sort_order", nullable = false)
 	private Integer sortOrder;
 
@@ -35,6 +44,24 @@ public class Category {
 	private boolean active;
 
 	protected Category() {
+	}
+
+	/** Creates a new category. {@code active} defaults to true; {@code keywords} null → empty list. */
+	public Category(Long parentId, short level, String name, List<String> keywords, int sortOrder) {
+		this.parentId = parentId;
+		this.level = level;
+		this.name = name;
+		this.keywords = keywords == null ? new ArrayList<>() : new ArrayList<>(keywords);
+		this.sortOrder = sortOrder;
+		this.active = true;
+	}
+
+	/** Admin upsert mutator (Story 4.5) — single entry point for all editable fields. */
+	public void update(String name, List<String> keywords, int sortOrder, boolean active) {
+		this.name = name;
+		this.keywords = keywords == null ? new ArrayList<>() : new ArrayList<>(keywords);
+		this.sortOrder = sortOrder;
+		this.active = active;
 	}
 
 	public Long getId() {
@@ -51,6 +78,11 @@ public class Category {
 
 	public String getName() {
 		return name;
+	}
+
+	/** Defensive copy — callers must not mutate the returned list. */
+	public List<String> getKeywords() {
+		return keywords == null ? List.of() : Collections.unmodifiableList(keywords);
 	}
 
 	public Integer getSortOrder() {

@@ -53,6 +53,9 @@ export function AppLayout({ children }: AppLayoutProps) {
               )}
               {user && user.role === 'ADMIN' && <Link to="/dashboard">대시보드</Link>}
               {user && user.role === 'ADMIN' && <Link to="/reports">보관함</Link>}
+              {user && user.role === 'ADMIN' && (
+                <Link to="/admin/categories">카테고리 관리</Link>
+              )}
             </Space>
           </nav>
         </Space>

@@ -41,6 +41,11 @@ const ReportsView = lazy(() =>
 const DashboardView = lazy(() =>
   import('./features/dashboard/DashboardView').then((m) => ({ default: m.DashboardView }))
 );
+const AdminCategoriesView = lazy(() =>
+  import('./features/admin-categories/AdminCategoriesView').then((m) => ({
+    default: m.AdminCategoriesView,
+  }))
+);
 
 function RouteFallback() {
   return (
@@ -167,6 +172,19 @@ export function AppRoutes() {
             <RequireRole roles={['ADMIN']}>
               <AppLayout>
                 <DashboardView />
+              </AppLayout>
+            </RequireRole>
+          </RequireAuth>
+        }
+      />
+
+      <Route
+        path="/admin/categories"
+        element={
+          <RequireAuth>
+            <RequireRole roles={['ADMIN']}>
+              <AppLayout>
+                <AdminCategoriesView />
               </AppLayout>
             </RequireRole>
           </RequireAuth>
