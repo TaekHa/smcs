@@ -56,10 +56,24 @@ public class IssueExportService {
 		this.csvExporter = csvExporter;
 	}
 
+	/**
+	 * Returns the row count for {@code filter} so the controller can fail-fast with
+	 * {@link ExportTooManyRowsException} <em>before</em> committing any response bytes
+	 * (status, headers, BOM). If the guard runs after the response is already committed,
+	 * Spring wraps the exception in a {@code ServletException} and cannot produce the
+	 * intended 400 JSON body.
+	 */
+	@Transactional(readOnly = true)
+	public long countMatching(IssueListFilter filter) {
+		return issueRepository.count(buildSpec(filter));
+	}
+
 	@Transactional(readOnly = true)
 	public void exportCsv(IssueListFilter filter, boolean includePii, Writer out) {
 		Specification<Issue> spec = buildSpec(filter);
 
+		// Defense-in-depth: callers SHOULD pre-check via countMatching(), but if they don't,
+		// don't let a 5,000-row safety net be silently bypassed.
 		long count = issueRepository.count(spec);
 		if (count > MAX_ROWS) {
 			throw new ExportTooManyRowsException(count);

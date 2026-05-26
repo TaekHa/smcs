@@ -11,6 +11,7 @@ import com.smcs.issue.dto.TransitionRequest;
 import com.smcs.issue.dto.IssueListFilter;
 import com.smcs.issue.dto.IssueResponse;
 import com.smcs.issue.dto.IssueSummary;
+import com.smcs.issue.export.ExportTooManyRowsException;
 import com.smcs.issue.export.IssueExportService;
 import com.smcs.issue.export.UnsupportedFormatException;
 import jakarta.servlet.http.HttpServletResponse;
@@ -118,6 +119,17 @@ public class IssueController {
 			throw new UnsupportedFormatException(format);
 		}
 
+		IssueListFilter filter = new IssueListFilter(
+				status, categoryL1Id, categoryL2Id, categoryL3Id, assigneeId, from, to, q);
+
+		// Fail-fast on the 5,000-row cap BEFORE committing the response (status, headers, BOM) —
+		// once we've written even one byte, Spring can no longer rewrite a 200/CSV reply into a
+		// 400 JSON one and the exception bubbles as a ServletException.
+		long count = issueExportService.countMatching(filter);
+		if (count > IssueExportService.MAX_ROWS) {
+			throw new ExportTooManyRowsException(count);
+		}
+
 		String filename = "issues-" + EXPORT_FILENAME_TS.format(ZonedDateTime.now(ZoneId.of("Asia/Seoul"))) + ".csv";
 		response.setStatus(HttpStatus.OK.value());
 		response.setContentType("text/csv; charset=UTF-8");
@@ -125,9 +137,6 @@ public class IssueController {
 
 		// Excel needs an explicit UTF-8 BOM to detect encoding for Korean text (Deviation #7).
 		response.getOutputStream().write(UTF8_BOM);
-
-		IssueListFilter filter = new IssueListFilter(
-				status, categoryL1Id, categoryL2Id, categoryL3Id, assigneeId, from, to, q);
 
 		try (Writer writer = new OutputStreamWriter(response.getOutputStream(), StandardCharsets.UTF_8)) {
 			issueExportService.exportCsv(filter, includePii, writer);
