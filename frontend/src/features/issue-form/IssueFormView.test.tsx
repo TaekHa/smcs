@@ -18,6 +18,12 @@ vi.mock('../../shared/components/CategoryPicker', () => ({
   ),
 }));
 
+// Story 4.2 — auto-category hook needs `useCategories` (3 levels). Stub the hook so the
+// form tests don't depend on network. A dedicated test below exercises the wiring.
+vi.mock('../../shared/hooks/useCategories', () => ({
+  useCategories: () => ({ data: [], isLoading: false }),
+}));
+
 import { IssueFormView } from './IssueFormView';
 
 function renderForm() {
