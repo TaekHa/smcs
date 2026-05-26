@@ -11,9 +11,22 @@ import com.smcs.issue.dto.TransitionRequest;
 import com.smcs.issue.dto.IssueListFilter;
 import com.smcs.issue.dto.IssueResponse;
 import com.smcs.issue.dto.IssueSummary;
+import com.smcs.issue.export.IssueExportService;
+import com.smcs.issue.export.UnsupportedFormatException;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.UncheckedIOException;
+import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -36,15 +49,22 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api")
 public class IssueController {
 
+	private static final Logger log = LoggerFactory.getLogger(IssueController.class);
+	private static final DateTimeFormatter EXPORT_FILENAME_TS =
+			DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss").withZone(ZoneId.of("Asia/Seoul"));
+	private static final byte[] UTF8_BOM = { (byte) 0xEF, (byte) 0xBB, (byte) 0xBF };
+
 	private final IssueService issueService;
 	private final IssueQueryService issueQueryService;
 	private final CommentService commentService;
+	private final IssueExportService issueExportService;
 
 	public IssueController(IssueService issueService, IssueQueryService issueQueryService,
-			CommentService commentService) {
+			CommentService commentService, IssueExportService issueExportService) {
 		this.issueService = issueService;
 		this.issueQueryService = issueQueryService;
 		this.commentService = commentService;
+		this.issueExportService = issueExportService;
 	}
 
 	@GetMapping("/issues")
@@ -71,6 +91,55 @@ public class IssueController {
 			@AuthenticationPrincipal Object principal) {
 		Long currentUserId = (Long) principal;
 		return issueService.create(request, currentUserId);
+	}
+
+	/**
+	 * CSV export of the same {@code GET /issues} query result. ADMIN-only (PRD §6).
+	 * Stream-writes UTF-8 with BOM so Excel reads Korean text correctly; {@code includePii}
+	 * appends the two caller-PII columns (Story 4.3 Deviation #5).
+	 */
+	@GetMapping("/issues/export")
+	@PreAuthorize("hasRole('ADMIN')")
+	public void exportIssues(
+			@RequestParam(required = false) List<IssueStatus> status,
+			@RequestParam(required = false) List<Long> categoryL1Id,
+			@RequestParam(required = false) List<Long> categoryL2Id,
+			@RequestParam(required = false) List<Long> categoryL3Id,
+			@RequestParam(required = false) Long assigneeId,
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+			@RequestParam(required = false) String q,
+			@RequestParam(defaultValue = "csv") String format,
+			@RequestParam(defaultValue = "false") boolean includePii,
+			@AuthenticationPrincipal Object principal,
+			HttpServletResponse response) throws IOException {
+
+		if (!"csv".equalsIgnoreCase(format)) {
+			throw new UnsupportedFormatException(format);
+		}
+
+		String filename = "issues-" + EXPORT_FILENAME_TS.format(ZonedDateTime.now(ZoneId.of("Asia/Seoul"))) + ".csv";
+		response.setStatus(HttpStatus.OK.value());
+		response.setContentType("text/csv; charset=UTF-8");
+		response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
+
+		// Excel needs an explicit UTF-8 BOM to detect encoding for Korean text (Deviation #7).
+		response.getOutputStream().write(UTF8_BOM);
+
+		IssueListFilter filter = new IssueListFilter(
+				status, categoryL1Id, categoryL2Id, categoryL3Id, assigneeId, from, to, q);
+
+		try (Writer writer = new OutputStreamWriter(response.getOutputStream(), StandardCharsets.UTF_8)) {
+			issueExportService.exportCsv(filter, includePii, writer);
+		} catch (UncheckedIOException ex) {
+			throw ex.getCause();
+		}
+
+		if (includePii) {
+			// Deviation #10: audit the privileged path. PII values themselves never logged (§9.1).
+			Long actorId = principal instanceof Long ? (Long) principal : null;
+			log.info("CSV export with PII: actorId={}, filename={}", actorId, filename);
+		}
 	}
 
 	// FIELD ownership ("본인 배정만") can't be expressed in @PreAuthorize, so these three

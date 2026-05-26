@@ -8,7 +8,7 @@ import java.util.List;
 import org.springframework.data.jpa.domain.Specification;
 
 /** Builds the dynamic WHERE for issue list/search. Each clause applies only when its input is present. */
-final class IssueSpecifications {
+public final class IssueSpecifications {
 
 	private IssueSpecifications() {
 	}
@@ -17,7 +17,7 @@ final class IssueSpecifications {
 	 * @param phoneHash precomputed HMAC of the search term, or null when the term is not a
 	 *                  plausible phone number (PO refinement R1: >= 9 normalized digits).
 	 */
-	static Specification<Issue> build(IssueListFilter f, String phoneHash, Instant fromInstant, Instant toInstant) {
+	public static Specification<Issue> build(IssueListFilter f, String phoneHash, Instant fromInstant, Instant toInstant) {
 		return (root, query, cb) -> {
 			List<Predicate> and = new ArrayList<>();
 
@@ -59,7 +59,7 @@ final class IssueSpecifications {
 	}
 
 	/** Default order: priority severity (URGENT→LOW) then createdAt asc. */
-	static Specification<Issue> defaultOrder() {
+	public static Specification<Issue> defaultOrder() {
 		return (root, query, cb) -> {
 			// Skip on the count query Spring Data issues for Page totals.
 			Class<?> rt = query.getResultType();
