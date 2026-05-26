@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Alert, Button, Card, Input, Radio, Space, Typography } from 'antd';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -7,8 +7,11 @@ import { useNavigate } from 'react-router-dom';
 import { createIssue } from '../../api/issues';
 import { CategoryPicker } from '../../shared/components/CategoryPicker';
 import { PriorityBadge } from '../../shared/components/PriorityBadge';
+import { useAutoCategory } from '../../shared/hooks/useAutoCategory';
 import type { ApiError } from '../../types/auth';
 import type { Priority } from '../../types/issue';
+
+type CategoryLevel = 1 | 2 | 3;
 
 const { Title } = Typography;
 
@@ -61,6 +64,9 @@ function FieldError({ message }: { message?: string }) {
 export function IssueFormView() {
   const navigate = useNavigate();
   const [error, setError] = useState<ErrorState | null>(null);
+  // Per-level flag: once a user clicks any level dropdown directly, auto suggestion stops
+  // touching that level (AC4). Auto-fills do NOT set the flag.
+  const [touched, setTouched] = useState<Record<CategoryLevel, boolean>>({ 1: false, 2: false, 3: false });
   const {
     control,
     handleSubmit,
@@ -76,6 +82,25 @@ export function IssueFormView() {
       description: '',
       priority: 'NORMAL',
     },
+  });
+
+  const title = watch('title');
+  const description = watch('description');
+  const applyAutoCategory = useCallback(
+    (level: CategoryLevel, id: number) => {
+      const fieldByLevel: Record<CategoryLevel, 'categoryL1Id' | 'categoryL2Id' | 'categoryL3Id'> = {
+        1: 'categoryL1Id',
+        2: 'categoryL2Id',
+        3: 'categoryL3Id',
+      };
+      setValue(fieldByLevel[level], id, { shouldValidate: true });
+    },
+    [setValue],
+  );
+  useAutoCategory({
+    text: `${title ?? ''} ${description ?? ''}`,
+    touched,
+    apply: applyAutoCategory,
   });
 
   async function onSubmit(values: FormValues) {
@@ -162,6 +187,21 @@ export function IssueFormView() {
                 l3: watch('categoryL3Id'),
               }}
               onChange={(v) => {
+                // User-initiated change — mark every level whose value differs from the
+                // current form value as touched, so auto suggestion no longer overwrites it.
+                const current = {
+                  1: watch('categoryL1Id'),
+                  2: watch('categoryL2Id'),
+                  3: watch('categoryL3Id'),
+                } as const;
+                const next = { l1: v.l1, l2: v.l2, l3: v.l3 };
+                const touchedDelta: Partial<Record<CategoryLevel, boolean>> = {};
+                if (next.l1 !== current[1]) touchedDelta[1] = true;
+                if (next.l2 !== current[2]) touchedDelta[2] = true;
+                if (next.l3 !== current[3]) touchedDelta[3] = true;
+                if (Object.keys(touchedDelta).length > 0) {
+                  setTouched((t) => ({ ...t, ...touchedDelta }));
+                }
                 setValue('categoryL1Id', v.l1 as number, { shouldValidate: true });
                 setValue('categoryL2Id', v.l2 as number, { shouldValidate: true });
                 setValue('categoryL3Id', v.l3 as number, { shouldValidate: true });

@@ -6,6 +6,8 @@ export interface CategoryOption {
   id: number;
   name: string;
   level: number;
+  /** Story 4.2 — auto category suggestion source. Optional for backward compatibility. */
+  keywords?: string[];
 }
 
 export interface CreateIssueRequest {
