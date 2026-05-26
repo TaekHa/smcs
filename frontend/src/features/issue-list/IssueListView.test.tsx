@@ -21,6 +21,18 @@ vi.mock('../../shared/hooks/useUsers', () => ({
   }),
 }));
 
+const useAuthMock = vi.fn();
+vi.mock('../../auth/useAuthStore', () => ({
+  useAuth: () => useAuthMock(),
+  useAuthStore: { getState: () => ({ logout: vi.fn() }) },
+}));
+
+const exportIssuesCsvMock = vi.fn();
+vi.mock('../../api/issues', () => ({
+  exportIssuesCsv: (...args: unknown[]) => exportIssuesCsvMock(...args),
+}));
+
+
 import { IssueListView } from './IssueListView';
 
 const PAGE: Page<IssueSummary> = {
@@ -43,6 +55,9 @@ const PAGE: Page<IssueSummary> = {
   size: 50,
 };
 
+const AGENT_USER = { id: 1, username: 'agent1', displayName: 'Agent', role: 'AGENT' as const };
+const ADMIN_USER = { id: 2, username: 'admin1', displayName: 'Admin', role: 'ADMIN' as const };
+
 function renderView() {
   return render(
     <MemoryRouter initialEntries={['/issues']}>
@@ -58,6 +73,9 @@ describe('IssueListView', () => {
   beforeEach(() => {
     useIssuesMock.mockReset();
     useIssuesMock.mockReturnValue({ data: PAGE, isFetching: false });
+    useAuthMock.mockReset();
+    useAuthMock.mockReturnValue(AGENT_USER);
+    exportIssuesCsvMock.mockReset();
   });
 
   it('renders a row with category path, priority and status badges', () => {
@@ -96,5 +114,98 @@ describe('IssueListView', () => {
     );
     const firstCall = useIssuesMock.mock.calls[0][0];
     expect(firstCall.sort).toBeUndefined();
+  });
+
+  describe('CSV export (Story 4.3)', () => {
+    it('hides CSV buttons for non-ADMIN users (Deviation #2)', () => {
+      useAuthMock.mockReturnValue(AGENT_USER);
+      renderView();
+      expect(screen.queryByRole('button', { name: '이슈 CSV 내보내기' })).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: '이슈 CSV 내보내기 - 개인정보 포함' })
+      ).not.toBeInTheDocument();
+    });
+
+    it('shows both CSV buttons for ADMIN', () => {
+      useAuthMock.mockReturnValue(ADMIN_USER);
+      renderView();
+      expect(screen.getByRole('button', { name: '이슈 CSV 내보내기' })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: '이슈 CSV 내보내기 - 개인정보 포함' })
+      ).toBeInTheDocument();
+    });
+
+    it('plain export triggers download with includePii=false', async () => {
+      useAuthMock.mockReturnValue(ADMIN_USER);
+      exportIssuesCsvMock.mockResolvedValue(new Blob(['csv'], { type: 'text/csv' }));
+
+      const createObjectURL = vi.fn().mockReturnValue('blob:test');
+      const revokeObjectURL = vi.fn();
+      vi.stubGlobal('URL', { createObjectURL, revokeObjectURL } as unknown as typeof URL);
+      const clickSpy = vi
+        .spyOn(HTMLAnchorElement.prototype, 'click')
+        .mockImplementation(() => undefined);
+
+      const user = userEvent.setup();
+      renderView();
+      await user.click(screen.getByRole('button', { name: '이슈 CSV 내보내기' }));
+
+      await waitFor(() => expect(exportIssuesCsvMock).toHaveBeenCalled());
+      const [, includePii] = exportIssuesCsvMock.mock.calls[0];
+      expect(includePii).toBe(false);
+      expect(createObjectURL).toHaveBeenCalled();
+      expect(clickSpy).toHaveBeenCalled();
+
+      clickSpy.mockRestore();
+      vi.unstubAllGlobals();
+    });
+
+    it('PII export requires Popconfirm then calls with includePii=true', async () => {
+      useAuthMock.mockReturnValue(ADMIN_USER);
+      exportIssuesCsvMock.mockResolvedValue(new Blob(['csv'], { type: 'text/csv' }));
+
+      const createObjectURL = vi.fn().mockReturnValue('blob:pii');
+      const revokeObjectURL = vi.fn();
+      vi.stubGlobal('URL', { createObjectURL, revokeObjectURL } as unknown as typeof URL);
+      const clickSpy = vi
+        .spyOn(HTMLAnchorElement.prototype, 'click')
+        .mockImplementation(() => undefined);
+
+      const user = userEvent.setup();
+      renderView();
+      await user.click(
+        screen.getByRole('button', { name: '이슈 CSV 내보내기 - 개인정보 포함' })
+      );
+      // Popconfirm "계속" — confirm before the API runs
+      await user.click(await screen.findByRole('button', { name: '계속' }));
+
+      await waitFor(() => expect(exportIssuesCsvMock).toHaveBeenCalled());
+      const [, includePii] = exportIssuesCsvMock.mock.calls[0];
+      expect(includePii).toBe(true);
+
+      clickSpy.mockRestore();
+      vi.unstubAllGlobals();
+    });
+
+    it('recovers (button re-enabled) when backend returns EXPORT_TOO_MANY_ROWS', async () => {
+      useAuthMock.mockReturnValue(ADMIN_USER);
+      const errorBody = JSON.stringify({
+        code: 'EXPORT_TOO_MANY_ROWS',
+        message: '결과가 5,000건을 초과합니다(현재 5001건). 필터를 좁혀주세요.',
+      });
+      exportIssuesCsvMock.mockRejectedValue({
+        response: { data: new Blob([errorBody], { type: 'application/json' }) },
+      });
+
+      const user = userEvent.setup();
+      renderView();
+      const button = screen.getByRole('button', { name: '이슈 CSV 내보내기' });
+      await user.click(button);
+
+      // After the rejection is handled, the exporting state must reset so the user can retry
+      // with a narrower filter — this is the visible end of the EXPORT_TOO_MANY_ROWS recovery path.
+      await waitFor(() => expect(button).not.toBeDisabled());
+      expect(exportIssuesCsvMock).toHaveBeenCalledTimes(1);
+    });
   });
 });

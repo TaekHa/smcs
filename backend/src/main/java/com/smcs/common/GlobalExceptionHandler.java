@@ -12,6 +12,8 @@ import com.smcs.issue.IssueForbiddenException;
 import com.smcs.issue.IssueNotFoundException;
 import com.smcs.issue.IssueTransitionException;
 import com.smcs.issue.ReopenReasonRequiredException;
+import com.smcs.issue.export.ExportTooManyRowsException;
+import com.smcs.issue.export.UnsupportedFormatException;
 import com.smcs.notification.NotificationNotFoundException;
 import com.smcs.report.ReportNotFoundException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
@@ -109,6 +111,20 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ErrorResponse> handleReportNotFound(ReportNotFoundException ex) {
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)
 				.body(ErrorResponse.of("REPORT_NOT_FOUND", "Report not found."));
+	}
+
+	@ExceptionHandler(ExportTooManyRowsException.class)
+	public ResponseEntity<ErrorResponse> handleExportTooManyRows(ExportTooManyRowsException ex) {
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+				.body(ErrorResponse.of("EXPORT_TOO_MANY_ROWS",
+						"결과가 5,000건을 초과합니다(현재 " + ex.getActualCount() + "건). 필터를 좁혀주세요."));
+	}
+
+	@ExceptionHandler(UnsupportedFormatException.class)
+	public ResponseEntity<ErrorResponse> handleUnsupportedFormat(UnsupportedFormatException ex) {
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+				.body(ErrorResponse.of("UNSUPPORTED_FORMAT",
+						"format: only 'csv' is supported (got '" + ex.getFormat() + "')."));
 	}
 
 	@ExceptionHandler(InvalidImageException.class)

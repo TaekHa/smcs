@@ -1,9 +1,23 @@
 import { useEffect, useState } from 'react';
-import { Card, DatePicker, Input, Select, Space, Table, Typography } from 'antd';
+import {
+  Button,
+  Card,
+  DatePicker,
+  Input,
+  Popconfirm,
+  Select,
+  Space,
+  Table,
+  Typography,
+  message,
+} from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { SorterResult } from 'antd/es/table/interface';
+import { DownloadOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
+import { exportIssuesCsv } from '../../api/issues';
+import { useAuth } from '../../auth/useAuthStore';
 import { useIssues } from '../../shared/hooks/useIssues';
 import { useCategories } from '../../shared/hooks/useCategories';
 import { useUsers } from '../../shared/hooks/useUsers';
@@ -26,8 +40,11 @@ const PAGE_SIZE = 50;
 
 export function IssueListView() {
   const navigate = useNavigate();
+  const user = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
   const [params, setParams] = useState<IssueListParams>({ page: 0, size: PAGE_SIZE });
   const [searchText, setSearchText] = useState('');
+  const [exporting, setExporting] = useState<'plain' | 'pii' | null>(null);
 
   // debounce search → params.q (reset to first page)
   useEffect(() => {
@@ -45,6 +62,28 @@ export function IssueListView() {
 
   function patch(next: Partial<IssueListParams>) {
     setParams((p) => ({ ...p, ...next, page: 0 }));
+  }
+
+  async function handleExport(includePii: boolean) {
+    const mode = includePii ? 'pii' : 'plain';
+    setExporting(mode);
+    try {
+      const blob = await exportIssuesCsv(params, includePii);
+      const url = URL.createObjectURL(blob);
+      const filename = `issues-${dayjs().format('YYYYMMDD-HHmmss')}.csv`;
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      // Revoke after a delay so the browser has time to start the download (3.5 pattern).
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (err: unknown) {
+      message.error(await extractErrorMessage(err));
+    } finally {
+      setExporting(null);
+    }
   }
 
   const columns: ColumnsType<IssueSummary> = [
@@ -134,6 +173,36 @@ export function IssueListView() {
           value={searchText}
           onChange={(e) => setSearchText(e.target.value)}
         />
+        {isAdmin && (
+          <>
+            <Button
+              icon={<DownloadOutlined />}
+              loading={exporting === 'plain'}
+              disabled={exporting !== null}
+              onClick={() => handleExport(false)}
+              aria-label="이슈 CSV 내보내기"
+            >
+              CSV 내보내기
+            </Button>
+            <Popconfirm
+              title="개인정보 포함 내보내기"
+              description="발신자명/전화번호가 포함된 CSV가 다운로드됩니다. 계속하시겠습니까?"
+              okText="계속"
+              cancelText="취소"
+              onConfirm={() => handleExport(true)}
+            >
+              <Button
+                danger
+                icon={<DownloadOutlined />}
+                loading={exporting === 'pii'}
+                disabled={exporting !== null}
+                aria-label="이슈 CSV 내보내기 - 개인정보 포함"
+              >
+                CSV 내보내기 (PII 포함)
+              </Button>
+            </Popconfirm>
+          </>
+        )}
       </Space>
 
       <Table<IssueSummary>
@@ -164,4 +233,29 @@ export function IssueListView() {
       />
     </Card>
   );
+}
+
+/**
+ * Pulls the backend's `{ code, message }` out of an error response. Because the export call
+ * uses {@code responseType: 'blob'}, axios hands us a Blob body even on 4xx — we read and
+ * parse it here so the user sees the Korean message from EXPORT_TOO_MANY_ROWS.
+ */
+async function extractErrorMessage(err: unknown): Promise<string> {
+  const fallback = '내보내기에 실패했습니다.';
+  if (typeof err !== 'object' || err === null) return fallback;
+  const response = (err as { response?: { data?: unknown } }).response;
+  const data = response?.data;
+  if (data instanceof Blob) {
+    try {
+      const text = await data.text();
+      const parsed = JSON.parse(text) as { message?: string };
+      if (parsed.message) return parsed.message;
+    } catch {
+      // fall through to fallback
+    }
+  } else if (data && typeof data === 'object' && 'message' in data) {
+    const msg = (data as { message?: unknown }).message;
+    if (typeof msg === 'string') return msg;
+  }
+  return fallback;
 }

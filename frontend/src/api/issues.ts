@@ -72,3 +72,20 @@ export async function uploadAttachment(
   });
   return res.data;
 }
+
+/**
+ * ADMIN-only CSV export of the issue list (Story 4.3). Returns a Blob; the caller is
+ * responsible for triggering the download via a temporary {@code <a download>} and
+ * revoking the object URL. {@code window.open(serverUrl)} would skip the JWT → 401.
+ */
+export async function exportIssuesCsv(
+  params: IssueListParams,
+  includePii: boolean,
+): Promise<Blob> {
+  const res = await apiClient.get<Blob>('/issues/export', {
+    params: { ...params, format: 'csv', includePii },
+    paramsSerializer: { indexes: null },
+    responseType: 'blob',
+  });
+  return res.data;
+}
