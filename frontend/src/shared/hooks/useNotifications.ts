@@ -16,11 +16,15 @@ export function useUnreadCount() {
   });
 }
 
-/** Notification list (newest first). */
-export function useNotifications(page = 0) {
+/**
+ * Notification list (newest first). Story 4.1 lets the bell dropdown gate fetching
+ * via `enabled` so we only hit the API when the popover opens (architecture §8.5).
+ */
+export function useNotifications(page = 0, options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: ['notifications', 'list', page],
     queryFn: () => listNotifications(page),
+    enabled: options.enabled ?? true,
   });
 }
 

@@ -1,23 +1,15 @@
 import { Button, Card, Empty, List, Typography } from 'antd';
 import dayjs from 'dayjs';
-import { useNavigate } from 'react-router-dom';
-import { useMarkAllRead, useMarkRead, useNotifications } from '../../shared/hooks/useNotifications';
-import type { Notification } from '../../types/notification';
+import { useMarkAllRead, useNotifications } from '../../shared/hooks/useNotifications';
+import { useOpenNotification } from './useOpenNotification';
 
 const { Title, Text } = Typography;
 
 /** Notification list page (Story 2.8). Click → mark read + go to the issue. */
 export function NotificationsView() {
-  const navigate = useNavigate();
   const { data, isLoading } = useNotifications();
-  const markRead = useMarkRead();
+  const open = useOpenNotification();
   const markAllRead = useMarkAllRead();
-
-  function open(n: Notification) {
-    markRead.mutate(n.id);
-    // Story 3.4/3.5 — report-scoped notifications (issueId == null) link to the archive.
-    navigate(n.issueId == null ? '/reports' : `/issues/${n.issueId}`);
-  }
 
   return (
     <Card style={{ maxWidth: 720, margin: '0 auto' }}>
