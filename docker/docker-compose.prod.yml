@@ -1,0 +1,119 @@
+# Story 4.6 — Production docker compose (4 services).
+# Run from this directory:
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Prereqs (operations.md §1):
+#   - `cp .env.template .env` and fill in secrets (openssl rand -base64 32 × 3)
+#   - SSL cert at ./nginx/ssl/server.crt + server.key (Let's Encrypt or self-signed bootstrap)
+#   - Host path matching ${SMCS_FILES_DIR} owned by uid 1000 (backend non-root user)
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "100m"
+    max-file: "5"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: smcs_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: smcs
+      POSTGRES_USER: smcs
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required in docker/.env}"
+      TZ: Asia/Seoul
+    volumes:
+      - smcs_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smcs -d smcs"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [smcs_net]
+    logging: *default-logging
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    image: smcs-backend:local
+    container_name: smcs_backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      TZ: Asia/Seoul
+      SPRING_PROFILES_ACTIVE: prod
+      # Spring's relaxed binding maps these env vars to spring.datasource.*
+      # (application.yml leaves url/username/password empty in the prod profile).
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/smcs
+      SPRING_DATASOURCE_USERNAME: smcs
+      SPRING_DATASOURCE_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required in docker/.env}"
+      SMCS_JWT_SECRET: "${SMCS_JWT_SECRET:?SMCS_JWT_SECRET is required in docker/.env}"
+      SMCS_DATA_KEY: "${SMCS_DATA_KEY:?SMCS_DATA_KEY is required in docker/.env}"
+      SMCS_HMAC_KEY: "${SMCS_HMAC_KEY:?SMCS_HMAC_KEY is required in docker/.env}"
+      # First production deploy: keep cleanup-cron unreachable (Feb 31) per Story 3.5
+      # Deviation #8. After ~1 week of stable archives, change to "0 0 3 * * *".
+      SMCS_REPORTS_DAILY_CRON: "${SMCS_REPORTS_DAILY_CRON:-0 0 8 * * *}"
+      SMCS_REPORTS_WEEKLY_CRON: "${SMCS_REPORTS_WEEKLY_CRON:-0 0 8 * * MON}"
+      SMCS_REPORTS_CLEANUP_CRON: "${SMCS_REPORTS_CLEANUP_CRON:-0 0 5 31 2 *}"
+      SMCS_REPORTS_RETENTION_DAYS: "${SMCS_REPORTS_RETENTION_DAYS:-90}"
+    volumes:
+      # Host path (SMCS_FILES_DIR) → container /var/smcs/files (application.yml default).
+      # SMCS_FILES_DIR is read at compose-interpolation level only; the backend container
+      # does NOT receive SMCS_FILES_DIR as env, so it uses the application.yml default.
+      - "${SMCS_FILES_DIR:-/data/smcs/files}:/var/smcs/files"
+      - "${SMCS_LOGS_DIR:-/var/log/smcs}:/var/log/smcs"
+    networks: [smcs_net]
+    logging: *default-logging
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    image: smcs-frontend:local
+    container_name: smcs_frontend
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Seoul
+    networks: [smcs_net]
+    logging: *default-logging
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: smcs_nginx
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      TZ: Asia/Seoul
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      # http-01 ACME challenge path; unused with the dns-01 default but kept
+      # available so a fallback issuance flow can write here without remount.
+      - certbot_www:/var/www/certbot:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://127.0.0.1/api/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    networks: [smcs_net]
+    logging: *default-logging
+
+volumes:
+  smcs_pg_data:
+  certbot_www:
+
+networks:
+  smcs_net:
+    driver: bridge

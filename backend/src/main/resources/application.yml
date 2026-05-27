@@ -20,6 +20,18 @@ spring:
     multipart:
       max-file-size: 10MB
       max-request-size: 10MB
+# Story 4.6 — Actuator gated to /health only; nginx + docker probe it
+# unauthenticated (Deviation #6). show-details=never hides DB validation
+# query, disk space, and other internals from the public response.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
 smcs:
   files:
     dir: ${SMCS_FILES_DIR:/var/smcs/files}
