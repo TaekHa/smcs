@@ -1,0 +1,38 @@
+# Build artifacts — let the container rebuild deterministically.
+build/
+.gradle/
+out/
+bin/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# OS
+.DS_Store
+Thumbs.db
+
+# VCS
+.git/
+.gitignore
+.gitattributes
+
+# Logs / temp
+*.log
+logs/
+tmp/
+
+# Secrets — never bake into images.
+.env
+.env.*
+*.key
+*.pem
+*.crt
+*.p12
+*.jks
+
+# Local-only docker compose lives at repo root /docker; backend image build needs none of it.
+docker-compose*.yml
