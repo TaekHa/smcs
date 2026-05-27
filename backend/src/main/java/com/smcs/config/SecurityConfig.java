@@ -75,6 +75,10 @@ public class SecurityConfig {
 				.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests(authz -> authz
 						.requestMatchers("/api/auth/login", "/api/health").permitAll()
+						// Story 4.6 — actuator/health unauthenticated for nginx upstream +
+						// docker HEALTHCHECK probes (Deviation #6, show-details=never gates info).
+						.requestMatchers("/actuator/health").permitAll()
+						.requestMatchers("/actuator/**").denyAll()
 						.requestMatchers("/api/**").authenticated()
 						.requestMatchers("/files/**").authenticated()
 						.anyRequest().permitAll())
