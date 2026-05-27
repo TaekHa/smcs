@@ -63,6 +63,7 @@ function renderView() {
     <MemoryRouter initialEntries={['/issues']}>
       <Routes>
         <Route path="/issues" element={<IssueListView />} />
+        <Route path="/issues/new" element={<div>NEW ISSUE FORM</div>} />
         <Route path="/issues/:id" element={<div>DETAIL PAGE</div>} />
       </Routes>
     </MemoryRouter>
@@ -91,6 +92,13 @@ describe('IssueListView', () => {
     renderView();
     await user.click(screen.getByText('엘리베이터 긴급'));
     await waitFor(() => expect(screen.getByText('DETAIL PAGE')).toBeInTheDocument());
+  });
+
+  it('SW-008 P1 regression: 신규 등록 버튼이 /issues/new 로 이동 (AGENT/ADMIN primary entry)', async () => {
+    const user = userEvent.setup();
+    renderView();
+    await user.click(screen.getByRole('button', { name: '신규 이슈 등록' }));
+    await waitFor(() => expect(screen.getByText('NEW ISSUE FORM')).toBeInTheDocument());
   });
 
   it('debounced search updates the query params (q + page reset)', async () => {

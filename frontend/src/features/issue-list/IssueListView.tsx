@@ -13,7 +13,7 @@ import {
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { SorterResult } from 'antd/es/table/interface';
-import { DownloadOutlined } from '@ant-design/icons';
+import { DownloadOutlined, PlusOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { exportIssuesCsv } from '../../api/issues';
@@ -113,9 +113,19 @@ export function IssueListView() {
 
   return (
     <Card>
-      <Title level={3} style={{ marginTop: 0 }}>
-        이슈 리스트
-      </Title>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <Title level={3} style={{ margin: 0 }}>
+          이슈 리스트
+        </Title>
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={() => navigate('/issues/new')}
+          aria-label="신규 이슈 등록"
+        >
+          신규 등록
+        </Button>
+      </div>
 
       <Space wrap style={{ marginBottom: 16 }}>
         <Select
