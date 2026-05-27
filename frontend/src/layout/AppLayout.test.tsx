@@ -7,9 +7,14 @@ import { AppLayout } from './AppLayout';
 import { useAuthStore } from '../auth/useAuthStore';
 import type { Role, UserSummary } from '../types/auth';
 
-// AppLayout's NotificationBell polls unread-count; stub the hook to avoid network.
+// AppLayout's NotificationBell polls unread-count and fetches the recent list for the
+// Story 4.1 dropdown; stub all consumed hooks to avoid network.
 vi.mock('../shared/hooks/useNotifications', () => ({
   useUnreadCount: () => ({ data: { count: 0 } }),
+  useNotifications: () => ({
+    data: { content: [], totalElements: 0, totalPages: 0, number: 0, size: 20 },
+  }),
+  useMarkRead: () => ({ mutate: vi.fn() }),
 }));
 
 function makeUser(role: Role, displayName = 'TestUser'): UserSummary {
