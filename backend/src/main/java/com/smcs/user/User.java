@@ -7,6 +7,8 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.Instant;
 
@@ -44,6 +46,41 @@ public class User {
 	private Instant updatedAt;
 
 	protected User() {
+	}
+
+	/** Admin-create constructor (Story 4.4). active defaults to true; timestamps via @PrePersist. */
+	public User(String username, String passwordHash, String displayName, Role role, String phone) {
+		this.username = username;
+		this.passwordHash = passwordHash;
+		this.displayName = displayName;
+		this.role = role;
+		this.phone = phone;
+		this.active = true;
+	}
+
+	@PrePersist
+	void onCreate() {
+		Instant now = Instant.now();
+		this.createdAt = now;
+		this.updatedAt = now;
+	}
+
+	@PreUpdate
+	void onUpdate() {
+		this.updatedAt = Instant.now();
+	}
+
+	/**
+	 * Admin update mutator (Story 4.4) — single entry point for profile edits.
+	 * {@code username} and {@code passwordHash} are intentionally NOT mutable here
+	 * (username = identifier with UNIQUE constraint; password changes flow through a
+	 * separate v2 endpoint that has not been implemented yet — Story 4.4 #7).
+	 */
+	public void updateProfile(String displayName, Role role, String phone, boolean active) {
+		this.displayName = displayName;
+		this.role = role;
+		this.phone = phone;
+		this.active = active;
 	}
 
 	public Long getId() {

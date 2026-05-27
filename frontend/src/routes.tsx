@@ -46,6 +46,9 @@ const AdminCategoriesView = lazy(() =>
     default: m.AdminCategoriesView,
   }))
 );
+const AdminUsersView = lazy(() =>
+  import('./features/admin-users/AdminUsersView').then((m) => ({ default: m.AdminUsersView }))
+);
 
 function RouteFallback() {
   return (
@@ -185,6 +188,19 @@ export function AppRoutes() {
             <RequireRole roles={['ADMIN']}>
               <AppLayout>
                 <AdminCategoriesView />
+              </AppLayout>
+            </RequireRole>
+          </RequireAuth>
+        }
+      />
+
+      <Route
+        path="/admin/users"
+        element={
+          <RequireAuth>
+            <RequireRole roles={['ADMIN']}>
+              <AppLayout>
+                <AdminUsersView />
               </AppLayout>
             </RequireRole>
           </RequireAuth>
