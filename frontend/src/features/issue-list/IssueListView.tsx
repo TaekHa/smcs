@@ -54,6 +54,26 @@ export function IssueListView() {
     return () => clearTimeout(t);
   }, [searchText]);
 
+  // SW-002 (Story 4.7): `N` shortcut → /issues/new. Gated to skip when the user is typing in a
+  // text input / textarea / antd combobox, and to ignore modifier-key combos like Ctrl+N (which
+  // would otherwise hijack the browser's "new window" shortcut).
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.key !== 'n' && e.key !== 'N') return;
+      const target = e.target as HTMLElement | null;
+      if (target) {
+        const tag = target.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable) return;
+        if (target.getAttribute('role') === 'combobox') return;
+      }
+      e.preventDefault();
+      navigate('/issues/new');
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [navigate]);
+
   const { data, isFetching } = useIssues(params);
   const l1 = useCategories(1);
   const l2 = useCategories(2);

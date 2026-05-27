@@ -101,6 +101,31 @@ describe('IssueListView', () => {
     await waitFor(() => expect(screen.getByText('NEW ISSUE FORM')).toBeInTheDocument());
   });
 
+  it('SW-002 P2 regression: `N` 단축키가 /issues/new 로 이동 (AC6 키보드 골든 패스)', async () => {
+    const user = userEvent.setup();
+    renderView();
+    // body has focus by default; the listener is on window so this should fire even without focus.
+    await user.keyboard('n');
+    await waitFor(() => expect(screen.getByText('NEW ISSUE FORM')).toBeInTheDocument());
+  });
+
+  it('SW-002 gate: `N` is ignored while typing in the search input (no false navigation)', async () => {
+    const user = userEvent.setup();
+    renderView();
+    const search = screen.getByPlaceholderText('제목/내용/전화번호 검색');
+    await user.click(search);
+    await user.keyboard('n');
+    // We are still on the list — the new-issue route has not been entered.
+    expect(screen.queryByText('NEW ISSUE FORM')).not.toBeInTheDocument();
+  });
+
+  it('SW-002 gate: Ctrl+N is ignored (browser shortcut passthrough)', async () => {
+    const user = userEvent.setup();
+    renderView();
+    await user.keyboard('{Control>}n{/Control}');
+    expect(screen.queryByText('NEW ISSUE FORM')).not.toBeInTheDocument();
+  });
+
   it('debounced search updates the query params (q + page reset)', async () => {
     const user = userEvent.setup();
     renderView();
