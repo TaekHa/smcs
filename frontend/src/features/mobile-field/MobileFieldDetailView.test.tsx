@@ -85,7 +85,7 @@ describe('MobileFieldDetailView', () => {
     expect(btn).toBeEnabled();
   });
 
-  it('completes: FIELD_ACTION comment then DONE transition (AC4, AC6)', async () => {
+  it('completes from IN_PROGRESS: FIELD_ACTION comment then single DONE transition (AC4, AC6)', async () => {
     const user = userEvent.setup();
     renderView();
     await user.type(screen.getByPlaceholderText('조치 내용을 입력하세요'), '부품 교체 완료');
@@ -95,6 +95,26 @@ describe('MobileFieldDetailView', () => {
       expect.anything()
     );
     await waitFor(() => expect(transitionMutate).toHaveBeenCalledWith({ to: 'DONE' }, expect.anything()));
+    expect(transitionMutate).toHaveBeenCalledTimes(1);
+  });
+
+  it('SW-001 P1 regression: ASSIGNED issue chains IN_PROGRESS then DONE', async () => {
+    useIssueMock.mockReturnValue({
+      data: { ...ISSUE, status: 'ASSIGNED' },
+      isLoading: false,
+      isError: false,
+    });
+    const user = userEvent.setup();
+    renderView();
+    await user.type(screen.getByPlaceholderText('조치 내용을 입력하세요'), '현장 조치 완료');
+    await user.click(screen.getByRole('button', { name: '완료 처리' }));
+    expect(addCommentMutate).toHaveBeenCalledWith(
+      { body: '현장 조치 완료', kind: 'FIELD_ACTION' },
+      expect.anything()
+    );
+    await waitFor(() => expect(transitionMutate).toHaveBeenCalledTimes(2));
+    expect(transitionMutate).toHaveBeenNthCalledWith(1, { to: 'IN_PROGRESS' }, expect.anything());
+    expect(transitionMutate).toHaveBeenNthCalledWith(2, { to: 'DONE' }, expect.anything());
   });
 
   it('uploads a selected image (AC2/AC3)', async () => {

@@ -77,12 +77,29 @@ export function MobileFieldDetailView() {
   }
 
   function complete() {
+    if (!issue) return;
     const body = action.trim();
     if (!body) return;
-    // AC4 FIELD_ACTION comment → AC6 DONE transition (2.4 reuse). 2-call (Deviation #3).
+    // SW-001 (P1): backend VALID_TRANSITIONS = {ASSIGNED→IN_PROGRESS, IN_PROGRESS→DONE} only;
+    // mobile has no explicit "시작" button, so chain IN_PROGRESS before DONE when status is ASSIGNED.
+    const needStart = issue.status === 'ASSIGNED';
     addComment.mutate(
       { body, kind: 'FIELD_ACTION' },
-      { onSuccess: () => transition.mutate({ to: 'DONE' }, { onSuccess: () => setAction('') }) }
+      {
+        onSuccess: () => {
+          if (needStart) {
+            transition.mutate(
+              { to: 'IN_PROGRESS' },
+              {
+                onSuccess: () =>
+                  transition.mutate({ to: 'DONE' }, { onSuccess: () => setAction('') }),
+              }
+            );
+          } else {
+            transition.mutate({ to: 'DONE' }, { onSuccess: () => setAction('') });
+          }
+        },
+      }
     );
   }
 
