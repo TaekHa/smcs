@@ -181,7 +181,7 @@ class AdminUserIntegrationTest {
 		mockMvc.perform(post("/api/admin/users")
 				.header("Authorization", "Bearer " + token("agent1"))
 				.contentType(MediaType.APPLICATION_JSON)
-				.content("{\"username\":\"x\",\"displayName\":\"x\",\"role\":\"AGENT\"}"))
+				.content("{\"username\":\"xyz\",\"displayName\":\"x\",\"role\":\"AGENT\"}"))
 				.andExpect(status().isForbidden());
 	}
 
@@ -191,7 +191,7 @@ class AdminUserIntegrationTest {
 				.andExpect(status().isUnauthorized());
 		mockMvc.perform(post("/api/admin/users")
 				.contentType(MediaType.APPLICATION_JSON)
-				.content("{\"username\":\"x\",\"displayName\":\"x\",\"role\":\"AGENT\"}"))
+				.content("{\"username\":\"xyz\",\"displayName\":\"x\",\"role\":\"AGENT\"}"))
 				.andExpect(status().isUnauthorized());
 	}
 
