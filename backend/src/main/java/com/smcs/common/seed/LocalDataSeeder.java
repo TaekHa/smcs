@@ -39,6 +39,7 @@ public class LocalDataSeeder implements ApplicationRunner {
 		}
 
 		seedUsers();
+		seedCategoryKeywords();
 		List<Long> agentIds = jdbc.queryForList("SELECT id FROM users WHERE role = 'AGENT' ORDER BY id", Long.class);
 		List<Long> fieldIds = jdbc.queryForList("SELECT id FROM users WHERE role = 'FIELD' ORDER BY id", Long.class);
 		List<Long> l1Ids = jdbc.queryForList("SELECT id FROM categories WHERE level = 1 ORDER BY sort_order", Long.class);
@@ -46,10 +47,32 @@ public class LocalDataSeeder implements ApplicationRunner {
 		List<Long> l3Ids = jdbc.queryForList("SELECT id FROM categories WHERE level = 3 ORDER BY sort_order", Long.class);
 		seedIssues(agentIds, fieldIds, l1Ids, l2Ids, l3Ids);
 
-		log.info("Seeded 8 users + 20 issues (local profile)");
+		log.info("Seeded 8 users + 20 issues + category keywords (local profile)");
 		log.warn("Seed credentials: agent1/agent2/agent3/field1..4/admin1, all password = '{}'. "
 				+ "NEVER use in production. Real users go through Story 1.3 registration with PRD 6.9 policy.",
 				SEED_PASSWORD);
+	}
+
+	// SW-003 (Story 4.7): V3__seed_categories.sql ships `keywords = '[]'` for production
+	// (Story 1.2 decision — admins curate keywords post-deploy). Without these the
+	// 4.2 auto-suggestion has nothing to match against, so user-test scenarios that exercise
+	// the "type → category auto-fills" flow cannot succeed. Apply local-only keyword seed
+	// here so the dev profile and the golden-path test plan stay aligned.
+	private void seedCategoryKeywords() {
+		String sql = "UPDATE categories SET keywords = ?::jsonb WHERE level = ? AND name = ?";
+		// L1
+		jdbc.update(sql, "[\"아파트\",\"v1\",\"관리사무소\"]", 1, "아파트먼트v1");
+		jdbc.update(sql, "[\"아파트\",\"v2\"]", 1, "아파트먼트v2");
+		jdbc.update(sql, "[\"voip\",\"pbx\",\"전화\",\"통신\"]", 1, "voip/pbx");
+		// L2
+		jdbc.update(sql, "[\"웹\",\"관리자\",\"admin\",\"포털\"]", 2, "관리자웹");
+		jdbc.update(sql, "[\"앱\",\"입주민\",\"모바일\"]", 2, "입주민앱");
+		jdbc.update(sql, "[\"단말\",\"장비\",\"기기\",\"wifi\",\"인터넷\",\"공유기\",\"자판기\"]", 2, "단말");
+		jdbc.update(sql, "[\"서버\",\"백엔드\",\"DB\",\"데이터베이스\"]", 2, "서버");
+		// L3
+		jdbc.update(sql, "[\"미동작\",\"꺼짐\",\"안됨\",\"동작안함\",\"반환\"]", 3, "기기미동작");
+		jdbc.update(sql, "[\"오동작\",\"이상\",\"오류\",\"버그\"]", 3, "기기오동작");
+		jdbc.update(sql, "[\"로그인\",\"비밀번호\",\"인증\",\"로그아웃\"]", 3, "로그인오류");
 	}
 
 	private void seedUsers() {

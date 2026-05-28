@@ -74,6 +74,22 @@ class LocalDataSeederIntegrationTest {
 		}
 	}
 
+	// SW-003 P2 regression — local seed must populate category keywords so the 4.2
+	// auto-suggestion has something to match during user-test scenarios. Production V3
+	// migration still ships empty arrays per Story 1.2 decision.
+	@Test
+	void seedsCategoryKeywordsForAllTenCategories() {
+		Integer withKeywords = jdbc.queryForObject(
+				"SELECT COUNT(*) FROM categories WHERE jsonb_array_length(keywords) > 0",
+				Integer.class);
+		assertThat(withKeywords).isEqualTo(10);
+
+		String l2DanmalKeywords = jdbc.queryForObject(
+				"SELECT keywords::text FROM categories WHERE level = 2 AND name = '단말'",
+				String.class);
+		assertThat(l2DanmalKeywords).contains("wifi").contains("인터넷");
+	}
+
 	@Test
 	void seederIsIdempotentOnSecondRun() {
 		Integer usersBefore = jdbc.queryForObject("SELECT COUNT(*) FROM users", Integer.class);

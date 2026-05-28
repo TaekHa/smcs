@@ -24,6 +24,7 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -55,6 +56,16 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ErrorResponse> handleMissingParam(MissingServletRequestParameterException ex) {
 		return ResponseEntity.status(HttpStatus.BAD_REQUEST)
 				.body(ErrorResponse.of("VALIDATION_FAILED", ex.getParameterName() + ": required"));
+	}
+
+	// SW-004 (Story 4.7): malformed request body (invalid JSON, UTF-8 byte sequence, etc.)
+	// used to fall through to handleUnexpected → 500 INTERNAL_ERROR, which masked the fact
+	// that the client sent something the server could not parse. Map it to 400 BAD_REQUEST
+	// so the caller can recognize a client-side encoding bug from the response code alone.
+	@ExceptionHandler(HttpMessageNotReadableException.class)
+	public ResponseEntity<ErrorResponse> handleNotReadable(HttpMessageNotReadableException ex) {
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+				.body(ErrorResponse.of("MALFORMED_REQUEST", "Request body could not be parsed."));
 	}
 
 	@ExceptionHandler(LockedException.class)
