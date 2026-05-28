@@ -157,6 +157,51 @@ sudo crontab -e
 0 4 1 * * /usr/bin/certbot renew --quiet --post-hook 'docker compose -f /opt/smcs/docker/docker-compose.prod.yml exec nginx nginx -s reload'
 ```
 
+#### (d) 자가서명 — 테스트/스테이징 전용 (운영 금지)
+
+> Story 4.7 Phase 2 사용자 cycle 환경 또는 사내 격리망 PoC 처럼 **외부 신뢰 인증서가 불가능하거나 불필요한 경우의 임시 부트스트랩**. 운영 배포에서는 반드시 (a)/(b)/(c) Let's Encrypt 발급으로 교체.
+
+```bash
+# 1) 자가서명 인증서 생성 (1년 유효)
+sudo mkdir -p /opt/smcs/docker/nginx/ssl
+sudo openssl req -x509 -nodes -days 365 -newkey rsa:4096 \
+  -keyout /opt/smcs/docker/nginx/ssl/server.key \
+  -out   /opt/smcs/docker/nginx/ssl/server.crt \
+  -subj "/CN=smcs.local"
+# 운영 도메인이 정해져 있다면 CN= 값을 그 도메인으로(예: /CN=smcs.test.example.co.kr)
+```
+
+```bash
+# 2) 클라이언트 PC /etc/hosts (Windows: C:\Windows\System32\drivers\etc\hosts) 에 추가
+<운영 서버 IP>  smcs.local
+```
+
+브라우저는 자가서명 인증서를 신뢰하지 않으므로 첫 접속 시 경고 화면이 뜹니다. 두 가지 처리법:
+
+- **간단**: 경고 화면 → "고급" → "안전하지 않음으로 이동" — 매 세션 1회 클릭(테스트용으로만 허용)
+- **권장(여러 테스트 사용자 환경)**: `server.crt` 를 각 클라이언트의 OS 신뢰 저장소에 임포트(Windows: 인증서 관리자 → 신뢰할 수 있는 루트 인증 기관 / macOS: 키체인 → System / Ubuntu: `/usr/local/share/ca-certificates/` + `update-ca-certificates`). 임포트 후 경고 사라짐.
+
+**Story 4.7 Phase 2 사용자 cycle 추가 셋업** (시드 사용자 활성화 — 테스트 전용):
+
+prod profile 만으로는 `LocalDataSeeder` 가 비활성 → DB 가 비어 있어 `agent1`/`field1`/`admin1` 로그인 불가. 두 옵션:
+
+- **옵션 A (간단)**: `docker-compose.prod.yml` 의 `backend.environment.SPRING_PROFILES_ACTIVE` 를 `prod` → `prod,local` 로 수정 → 시드 자동 생성(8 user + 20 issue + L1~L3 카테고리 키워드). **테스트 종료 후 운영 전환 시 반드시 `prod` 단독으로 복귀** + 시드 사용자 비활성화/삭제.
+- **옵션 B (운영-등가)**: prod 프로파일 유지 + 첫 ADMIN 만 SQL 로 직접 INSERT → ADMIN UI(`/admin/users`) 로 AGENT/FIELD 정상 생성(임시 비밀번호 평문 1회 응답 정상 검증 = AC2/AC8 운영-등가 cycle). Story 4.4 의 임시비번 + Story 4.7 의 사용자 cycle 동시 검증 가능.
+
+옵션 B INSERT 예시(`apache2-utils` 의 `htpasswd` 가 BCrypt hash 를 한 줄로 생성. `dev1234` 와 다른 보호 비번 사용 권장):
+
+```bash
+sudo apt install -y apache2-utils   # htpasswd 미설치 시
+HASH=$(htpasswd -nbBC 10 "" "<원하는 비번>" | tr -d ':\n')
+docker compose -f /opt/smcs/docker/docker-compose.prod.yml exec postgres \
+  psql -U smcs -d smcs -c \
+  "INSERT INTO users (username,password_hash,display_name,role,active) VALUES ('admin','$HASH','초기관리자','ADMIN',true);"
+# 이후 https://smcs.local → admin/<원하는 비번> 로 로그인 → /admin/users 에서 AGENT/FIELD 정상 생성
+```
+
+자가서명 환경에서 동작하지 않는 기능 1건(알려진 한계):
+- **클립보드 복사**(Story 4.4 임시비밀번호 모달의 "복사" 버튼) — 브라우저가 `navigator.clipboard` 를 secure context(HTTPS + 신뢰 인증서)에서만 노출. 자가서명을 신뢰 저장소에 임포트(권장 방법)하면 정상 동작. 임포트 없이 경고 무시만 한 상태에서는 동작하지 않음 — 평문 monospace 표시는 정상이므로 수동 선택+복사로 우회 가능. Story 4.4 QA 잔여 관찰 #1 (clipboard HTTPS 보장) 가 자가서명 환경에서 신뢰 저장소 임포트로 해결됨을 명시.
+
 ---
 
 ## 2. 첫 배포
