@@ -90,6 +90,10 @@ class CategoryControllerIntegrationTest {
 		Long id = jdbc.queryForObject(
 				"SELECT id FROM categories WHERE level = 1 AND name = 'voip/pbx' LIMIT 1", Long.class);
 		jdbc.update("UPDATE categories SET keywords = '[\"VOIP\", \"전화\"]'::jsonb WHERE id = ?", id);
+		// SW-003 (Story 4.7): LocalDataSeeder now populates keywords for all 10 categories under
+		// @Profile("local"). Force '아파트먼트v1' back to V2 default so the "field present, default
+		// empty" assertion below stays meaningful for this test's intent.
+		jdbc.update("UPDATE categories SET keywords = '[]'::jsonb WHERE level = 1 AND name = '아파트먼트v1'");
 
 		try {
 			mockMvc.perform(get("/api/categories?level=1")
