@@ -60,10 +60,10 @@ describe('AppLayout', () => {
     expect(screen.queryByRole('link', { name: '이슈' })).not.toBeInTheDocument();
   });
 
-  it('ADMIN sees both 이슈 and 내 작업 links', () => {
+  it('ADMIN sees 이슈 link and not 내 작업 (UT-004: /me/assigned is FIELD-only)', () => {
     renderWithRole('ADMIN');
     expect(screen.getByRole('link', { name: '이슈' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: '내 작업' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: '내 작업' })).not.toBeInTheDocument();
   });
 
   it('renders user displayName, role tag, and logout button', () => {
