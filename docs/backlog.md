@@ -21,6 +21,14 @@
 | SW-007 | P3 | `GET /api/categories?level=N&parentId=M` 의 `parentId` 무효 | (1) `parentId=999`(존재하지 않는 부모) 로 호출 → 빈 배열이 아니라 해당 level 의 전체 목록 반환 | parent_id 가 V3에서 NULL 통일(자유 조합 결정, Story 1.2). 그러나 컨트롤러 시그니처에 `parentId` 파라미터가 살아있어 클라이언트 측 오해 유발. 우회: 클라이언트가 level 만 사용. v2 시 시그니처 정리 권장 | OPEN |
 | SW-008 | **P1** | AGENT/ADMIN UI 에 "신규 등록" 진입점 자체 부재 → 골든 패스 Stage 1 차단 | (1) agent1 로그인 → `/issues` (2) "신규 등록"/"+" 버튼 탐색 → **없음** (3) AppLayout nav 메뉴에도 신규 등록 항목 없음 → URL 직접 입력만이 유일 진입 | `/issues/new` 라우트 + `IssueFormView` 컴포넌트 모두 정상. **`IssueListView` 헤더 + AppLayout 메뉴 모두 진입 버튼 누락**. SW-002 (N 단축키 미구현) 과 합쳐 **AGENT primary action(이슈 접수) 가 UI 동선에서 완전히 사라짐**. Story 2.1 AC1 미충족. 브라우저 셀프 워크스루 단계 1 에서 사용자(권용기) 발견 | **FIXED** (Task 6 — 2026-05-27 dev). `IssueListView` 헤더 flex row 에 `<Button type="primary" icon={<PlusOutlined/>}>신규 등록</Button>` 추가, `onClick={() => navigate('/issues/new')}`, `aria-label="신규 이슈 등록"`. `/issues` 가 `RequireRole={'AGENT','ADMIN'}` 가드라 추가 권한 분기 불필요. RTL `SW-008 P1 regression` 신규(클릭→`/issues/new` 라우트 도달 단언). vitest 145/145, IssueListView lazy +0.07KB gzip(37.10KB), eager 무영향 |
 
+## 발견 항목 (2026-06-05 Phase 2 사용자 cycle 1 — gihyeon)
+
+| ID | 우선순위 | 제목 | 재현 단계 | 우선순위 근거 | 상태 |
+| :- | :------- | :--- | :-------- | :------------ | :--- |
+| UT-004 | P3 | ADMIN '내 작업'(/m) 메뉴 → `GET /api/me/assigned` 403 콘솔 에러 + 빈 페이지 | admin1 로 `/m` 진입 → FIELD 전용 엔드포인트 호출 → 403 | **정상 authz**(admin≠FIELD, 백엔드 거부가 올바름). 보안·데이터 문제 0. `AppLayout` nav 가 ADMIN 에도 '내 작업' 링크 노출(`role==='FIELD'\|\|'ADMIN'`) → 콘솔 노이즈·죽은 메뉴. UT-001 fix 후 stale 캐시 마스킹이 사라져 표면화 | OPEN. fix(v2)=ADMIN nav 에서 '내 작업' 제거 또는 MobileFieldHomeView 비-FIELD query skip |
+
+> **cycle 1 P1/P2(UT-001 캐시 노출 / UT-002 업로드 경로 / UT-003 미리보기 프록시)는 전부 FIXED + 실배포 검증** — 스토리 발견 버그 로그 참조. 본 표는 P3 이관분.
+
 ## v2 트리거 (deferred)
 
 - **이슈 트래커**: `docs/backlog.md` → Linear/Jira 마이그레이션 (현재 MVP 단순화, Deviation #3)
