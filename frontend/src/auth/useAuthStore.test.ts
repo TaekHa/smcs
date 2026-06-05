@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { useAuthStore } from './useAuthStore';
+import { queryClient } from '../shared/lib/queryClient';
 import type { UserSummary } from '../types/auth';
 
 const STORAGE_KEY = 'smcs.auth';
@@ -28,6 +29,14 @@ describe('useAuthStore', () => {
     expect(useAuthStore.getState().token).toBeNull();
     expect(useAuthStore.getState().user).toBeNull();
     expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+  });
+
+  it('logout clears the TanStack Query cache (UT-001 cross-user leak)', () => {
+    // Simulate a prior user's cached scoped data (e.g. GET /me/assigned).
+    queryClient.setQueryData(['me', 'assigned'], [{ id: 99 }]);
+    useAuthStore.getState().setSession(TOKEN, USER);
+    useAuthStore.getState().logout();
+    expect(queryClient.getQueryData(['me', 'assigned'])).toBeUndefined();
   });
 
   it('hydrate restores from valid localStorage', () => {

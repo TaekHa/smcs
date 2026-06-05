@@ -60,10 +60,15 @@ services:
       SMCS_REPORTS_WEEKLY_CRON: "${SMCS_REPORTS_WEEKLY_CRON:-0 0 8 * * MON}"
       SMCS_REPORTS_CLEANUP_CRON: "${SMCS_REPORTS_CLEANUP_CRON:-0 0 5 31 2 *}"
       SMCS_REPORTS_RETENTION_DAYS: "${SMCS_REPORTS_RETENTION_DAYS:-90}"
+      # Pin the attachment dir to the mounted container path below. Without this, the
+      # `local` seed profile (quickstart Option A = prod,local) overrides smcs.files.dir
+      # with its relative dev default (./var → /app/var), which the non-root uid 1000
+      # cannot create — uploads fail with AccessDeniedException and bypass the volume (UT-002).
+      SMCS_FILES_DIR: /var/smcs/files
     volumes:
-      # Host path (SMCS_FILES_DIR) → container /var/smcs/files (application.yml default).
-      # SMCS_FILES_DIR is read at compose-interpolation level only; the backend container
-      # does NOT receive SMCS_FILES_DIR as env, so it uses the application.yml default.
+      # Host path (.env SMCS_FILES_DIR, default /data/smcs/files) → container /var/smcs/files.
+      # The backend process writes to /var/smcs/files via the SMCS_FILES_DIR env above,
+      # pinned to the container path so the active profile's default can't redirect it.
       - "${SMCS_FILES_DIR:-/data/smcs/files}:/var/smcs/files"
       - "${SMCS_LOGS_DIR:-/var/log/smcs}:/var/log/smcs"
     networks: [smcs_net]

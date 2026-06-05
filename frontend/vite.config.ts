@@ -6,6 +6,10 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': 'http://localhost:8080',
+      // Attachment images are served at /files/** (FileController, no /api prefix).
+      // Without this the dev server returns index.html for /files/* and the
+      // AuthImage preview breaks — same gap nginx had in prod (UT-003).
+      '/files': 'http://localhost:8080',
     },
   },
   build: {
