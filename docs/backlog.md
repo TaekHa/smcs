@@ -25,7 +25,7 @@
 
 | ID | 우선순위 | 제목 | 재현 단계 | 우선순위 근거 | 상태 |
 | :- | :------- | :--- | :-------- | :------------ | :--- |
-| UT-004 | P3 | ADMIN '내 작업'(/m) 메뉴 → `GET /api/me/assigned` 403 콘솔 에러 + 빈 페이지 | admin1 로 `/m` 진입 → FIELD 전용 엔드포인트 호출 → 403 | **정상 authz**(admin≠FIELD, 백엔드 거부가 올바름). 보안·데이터 문제 0. `AppLayout` nav 가 ADMIN 에도 '내 작업' 링크 노출(`role==='FIELD'\|\|'ADMIN'`) → 콘솔 노이즈·죽은 메뉴. UT-001 fix 후 stale 캐시 마스킹이 사라져 표면화 | OPEN. fix(v2)=ADMIN nav 에서 '내 작업' 제거 또는 MobileFieldHomeView 비-FIELD query skip |
+| UT-004 | P3 | ADMIN '내 작업'(/m) 메뉴 → `GET /api/me/assigned` 403 콘솔 에러 + 빈 페이지 | admin1 로 `/m` 진입 → FIELD 전용 엔드포인트 호출 → 403 | **정상 authz**(admin≠FIELD, 백엔드 거부가 올바름). 보안·데이터 문제 0. `AppLayout` nav 가 ADMIN 에도 '내 작업' 링크 노출(`role==='FIELD'\|\|'ADMIN'`) → 콘솔 노이즈·죽은 메뉴. UT-001 fix 후 stale 캐시 마스킹이 사라져 표면화 | **FIXED** (2026-06-05, chore/post-4.7-cleanup): `AppLayout` nav 의 '내 작업' 을 FIELD 전용으로 변경(ADMIN 제거) → ADMIN 의 FIELD 전용 `/me/assigned` 호출·403 노이즈 제거. RTL 단언 갱신(ADMIN sees 이슈 not 내 작업) |
 
 > **cycle 1 P1/P2(UT-001 캐시 노출 / UT-002 업로드 경로 / UT-003 미리보기 프록시)는 전부 FIXED + 실배포 검증** — 스토리 발견 버그 로그 참조. 본 표는 P3 이관분.
 

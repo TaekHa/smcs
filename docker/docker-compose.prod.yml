@@ -45,7 +45,10 @@ services:
         condition: service_healthy
     environment:
       TZ: Asia/Seoul
-      SPRING_PROFILES_ACTIVE: prod
+      # Profile from .env (default prod). The test-deploy quickstart Option A sets
+      # SPRING_PROFILES_ACTIVE=prod,local in .env to enable LocalDataSeeder — keeping
+      # this tracked file untouched so `git pull`/checkout never conflicts.
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
       # Spring's relaxed binding maps these env vars to spring.datasource.*
       # (application.yml leaves url/username/password empty in the prod profile).
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/smcs
