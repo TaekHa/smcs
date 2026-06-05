@@ -17,6 +17,7 @@ import {
 import { isAxiosError } from 'axios';
 import dayjs from 'dayjs';
 import { useParams } from 'react-router-dom';
+import { AuthPreviewImage } from '../../shared/components/AuthPreviewImage';
 import {
   useIssue,
   useIssueEvents,
@@ -240,15 +241,7 @@ export function IssueDetailView() {
         <Image.PreviewGroup>
           <Space wrap>
             {issue.attachments.map((a) => (
-              <Image
-                key={a.id}
-                src={a.url}
-                alt={a.originalName}
-                width={120}
-                height={120}
-                style={{ objectFit: 'cover' }}
-                loading="lazy"
-              />
+              <AuthPreviewImage key={a.id} src={a.url} alt={a.originalName} width={120} height={120} />
             ))}
           </Space>
         </Image.PreviewGroup>

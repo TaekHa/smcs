@@ -26,8 +26,9 @@
 | ID | 우선순위 | 제목 | 재현 단계 | 우선순위 근거 | 상태 |
 | :- | :------- | :--- | :-------- | :------------ | :--- |
 | UT-004 | P3 | ADMIN '내 작업'(/m) 메뉴 → `GET /api/me/assigned` 403 콘솔 에러 + 빈 페이지 | admin1 로 `/m` 진입 → FIELD 전용 엔드포인트 호출 → 403 | **정상 authz**(admin≠FIELD, 백엔드 거부가 올바름). 보안·데이터 문제 0. `AppLayout` nav 가 ADMIN 에도 '내 작업' 링크 노출(`role==='FIELD'\|\|'ADMIN'`) → 콘솔 노이즈·죽은 메뉴. UT-001 fix 후 stale 캐시 마스킹이 사라져 표면화 | **FIXED** (2026-06-05, chore/post-4.7-cleanup): `AppLayout` nav 의 '내 작업' 을 FIELD 전용으로 변경(ADMIN 제거) → ADMIN 의 FIELD 전용 `/me/assigned` 호출·403 노이즈 제거. RTL 단언 갱신(ADMIN sees 이슈 not 내 작업) |
+| UT-005 | P2 | AGENT/ADMIN 데스크탑 이슈 상세에서 첨부 이미지 미리보기 깨짐 | AGENT/ADMIN 로 이슈 상세(`IssueDetailView`) 열람 → 첨부 이미지 401 → broken img | `IssueDetailView` 가 antd `<Image src={a.url}>`(평범한 `<img>`, JWT 미전송) 사용 → `/files/**` 401. 모바일 `AuthImage`(blob+JWT)는 정상이라 FIELD 만 보였음. UT-001/003 과 동일 계열(nginx 뒤 실배포 미검증, lesson #15) | **FIXED** (2026-06-05, fix/ut-005): blob fetch 를 `useAuthObjectUrl` 훅으로 추출 + 신규 `AuthPreviewImage`(antd Image + JWT blob, 줌/PreviewGroup 보존)로 갤러리 교체. AuthImage 도 훅 사용(DRY). vitest 149/149 |
 
-> **cycle 1 P1/P2(UT-001 캐시 노출 / UT-002 업로드 경로 / UT-003 미리보기 프록시)는 전부 FIXED + 실배포 검증** — 스토리 발견 버그 로그 참조. 본 표는 P3 이관분.
+> **사용자 cycle 배포 결함 4건(UT-001 캐시 노출 / UT-002 업로드 경로 / UT-003 미리보기 프록시 / UT-005 데스크탑 미리보기 401)는 전부 FIXED** — UT-001/002/003 실배포 검증 완료, 모두 lesson #15(nginx 뒤 실배포 e2e 미검증) 계열. 본 표 P3 = UT-004(ADMIN nav 정리). 상세는 스토리 발견 버그 로그.
 
 ## v2 트리거 (deferred)
 

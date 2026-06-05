@@ -24,6 +24,12 @@ vi.mock('../../shared/components/UserSelect', () => ({
   ),
 }));
 
+// AuthPreviewImage fetches the file as a JWT blob; pass the src straight through in tests so
+// the antd <Image> (and its Image.PreviewGroup zoom, AC5) renders synchronously.
+vi.mock('../../shared/hooks/useAuthObjectUrl', () => ({
+  useAuthObjectUrl: (src: string) => src,
+}));
+
 import { getIssue, listIssueEvents, addComment, assignIssue, transitionIssue } from '../../api/issues';
 import { IssueDetailView } from './IssueDetailView';
 
