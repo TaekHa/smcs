@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { UserSummary } from '../types/auth';
+import { queryClient } from '../shared/lib/queryClient';
 
 const STORAGE_KEY = 'smcs.auth';
 
@@ -22,6 +23,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
   logout: () => {
     localStorage.removeItem(STORAGE_KEY);
+    // Drop all cached per-user data so the next session starts clean — both the
+    // logout button (AppLayout) and the 401 interceptor (api/client.ts) funnel
+    // through here (Story 4.7 Phase 2 UT-001 cross-user cache leak).
+    queryClient.clear();
     set({ token: null, user: null });
   },
   hydrate: () => {

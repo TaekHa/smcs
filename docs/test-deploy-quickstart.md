@@ -170,7 +170,7 @@ curl -fsSk https://smcs.local/api/actuator/health       # {"status":"UP"}
 | :--- | :--- |
 | backend 컨테이너가 즉시 죽음(restarting) | `.env` 시크릿 3개 중 누락 → fail-fast. `docker compose ... logs backend` 확인 후 §2.1 재실행 |
 | backend 가 `(unhealthy)` 로 멈춤 | postgres 가 아직 안 떴거나 DATASOURCE 비번 불일치. `logs postgres` + `.env` `POSTGRES_PASSWORD` 확인 |
-| 첨부 업로드 시 500 | `/data/smcs/files` owner 가 uid 1000 이 아님 → `sudo chown -R 1000:1000 /data/smcs/files` |
+| 첨부 업로드 시 500 | (1) 마운트 디렉터리 권한: `sudo chown -R 1000:1000 /data/smcs/files`. (2) `logs backend` 가 `AccessDeniedException: /app/var` 면 backend 가 마운트 대신 컨테이너 작업디렉터리에 쓰는 것 — compose backend `environment` 에 `SMCS_FILES_DIR: /var/smcs/files` 핀이 있는지 확인(없는 구버전이면 `git pull` 후 `up -d` 재기동). 옵션 A(`prod,local`)에서 이 핀이 없으면 `local` 프로파일의 상대경로(`./var`)가 우선해 실패한다(UT-002). |
 | 로그인 시 계정 없음 | 시드 미적용. 옵션 A(`prod,local`) 적용했는지 또는 옵션 B INSERT 했는지 확인. **이미 한 번 떠서 users 테이블이 비어있지 않으면 시드는 skip** 됨 → 깨끗이 하려면 §5 의 volume 삭제 후 재기동 |
 | 임시 비밀번호 "복사" 버튼 무동작 | 자가서명을 단순 "경고 무시"만 하면 `navigator.clipboard` 가 secure context 가 아니라 비활성. `server.crt` 를 클라이언트 OS 신뢰 저장소에 임포트하면 해결. 임포트 전에는 평문을 수동 선택+복사로 우회 |
 | 포트 80/443 충돌 | 호스트에 다른 웹서버가 점유 중. 해당 서비스 중지 또는 compose 의 nginx `ports` 매핑 변경 |
