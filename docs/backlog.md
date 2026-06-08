@@ -30,6 +30,16 @@
 
 > **사용자 cycle 배포 결함 4건(UT-001 캐시 노출 / UT-002 업로드 경로 / UT-003 미리보기 프록시 / UT-005 데스크탑 미리보기 401)는 전부 FIXED** — UT-001/002/003 실배포 검증 완료, 모두 lesson #15(nginx 뒤 실배포 e2e 미검증) 계열. 본 표 P3 = UT-004(ADMIN nav 정리). 상세는 스토리 발견 버그 로그.
 
+## 보안 리뷰 (2026-06-08, 운영 배포 직전 4차원 실사)
+
+전반 견고 — CRITICAL/HIGH 0. 인가/IDOR(중앙 `IssueAccessGuard` 실 user-id 비교)·암호화(AES-GCM fresh IV·키 fail-fast·로그 PII 0)·인젝션(SQL 파라미터화·업로드 magic byte/EXIF/traversal·XSS 0)·배포(시크릿 외부화·actuator 잠금·TLS/HSTS·비root) 모두 양호. **3건 fix(fix/security-hardening, 2026-06-08)**:
+
+| 항목 | 등급 | fix |
+| :--- | :--- | :-- |
+| CSV/Excel 수식 인젝션 — `IssueCsvExporter.escape()` 가 `= + - @ TAB CR` 시작 셀 미중화 → ADMIN 이 export 를 Excel 로 열면 수식/명령 실행 | MEDIUM | 트리거 시작 셀에 `'` prefix(OWASP) + 단위 테스트 |
+| CSP 헤더 부재 — nginx 가 HSTS/X-Frame 등은 있으나 Content-Security-Policy 없음 | MEDIUM | nginx 에 CSP 추가(script-src 'self' / antd 위해 style 'unsafe-inline' / img blob:). **배포 시 실 브라우저 검증 필수** |
+| HMAC 키 길이 미검증 — `HmacHasher.init()` 가 non-blank 만(JWT≥32·AES=32 와 비대칭) | LOW | `init()` 에 ≥32바이트 체크 + CI 키 32B↑ 갱신 + 테스트 |
+
 ## v2 트리거 (deferred)
 
 - **이슈 트래커**: `docs/backlog.md` → Linear/Jira 마이그레이션 (현재 MVP 단순화, Deviation #3)
@@ -37,6 +47,10 @@
 - **antd Table jsdom warning** 제거 (라이브러리 한계, 모든 4.x 스토리 공통)
 - **PreventFurtherUsage budget guardrail** 자동 감지/알림 (lesson #9)
 - **Category 엔티티 timestamps + name unique** (Story 4.5 잔여 관찰 #2/#3)
+- **(보안) localStorage JWT → httpOnly+Secure 쿠키 + CSRF** (XSS 토큰 탈취 완화; CSP 가 현 완화책) / JWT TTL 8h 단축 검토
+- **(보안) 로그인 엔드포인트 요청 rate-limit** (nginx `limit_req`) — 현재 DB 잠금 5회/10분만, 크리덴셜 스터핑 완화
+- **(보안) 직원 `users.phone` 평문 → 암호화** 검토 (현재 ADMIN-only 노출이라 저위험)
+- **(보안) Spring Boot 3.3.4 → 3.3.x 최신 패치** 정기 bump (알려진 CVE 아님)
 
 ## SW-001 (P1) 제안 fix 패턴
 

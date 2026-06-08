@@ -1,15 +1,24 @@
 package com.smcs.crypto;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
 
 class HmacHasherTest {
 
 	private HmacHasher newHasher() {
-		HmacHasher hasher = new HmacHasher("test-hmac-key");
+		HmacHasher hasher = new HmacHasher("test-hmac-key-at-least-32-bytes-long");
 		hasher.init();
 		return hasher;
+	}
+
+	@Test
+	void shortKeyRejected() {
+		HmacHasher hasher = new HmacHasher("too-short-key");
+		assertThatThrownBy(hasher::init)
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessageContaining("32 bytes");
 	}
 
 	@Test

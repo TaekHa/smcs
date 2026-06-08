@@ -63,7 +63,7 @@
 - [ ] FIELD(모바일): 본인 이슈 조회 → **사진 첨부(업로드 성공)** → **미리보기 표시** → 조치 → 완료 ⭐
 - [ ] **세션 전환 누수 없음**: A 로그아웃 → B 로그인 열람 → A 재로그인 시 B 데이터 안 보임 (UT-001)
 - [ ] ADMIN: 대시보드 KPI/차트 → 보고서 보관함 PDF 미리보기 → 벨 드롭다운 알림
-- [ ] 브라우저 콘솔 에러 0 (403/CORS/mixed-content 없음)
+- [ ] 브라우저 콘솔 에러 0 (403/CORS/mixed-content/**CSP 위반** 없음) — nginx CSP 적용 후 전 화면(로그인·이슈·모바일·대시보드·보고서·첨부 미리보기) 정상 동작 + 콘솔에 `Content-Security-Policy` 위반 0 확인. 위반 시 해당 directive(예: antd 폰트→`font-src`) 보완
 
 ## 7. 백업 (operations.md §4)
 
