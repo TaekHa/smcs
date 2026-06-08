@@ -110,6 +110,19 @@ class IssueCsvExporterTest {
 		assertThat(out.toString()).startsWith("9,,"); // title empty → bare comma
 	}
 
+	@Test
+	void neutralizesCsvFormulaInjection() throws Exception {
+		Issue issue = newIssue(10L, "=cmd|'/c calc'!A1");
+		set(issue, "callerName", "@SUM(1+1)");
+		set(issue, "callerPhone", "-2+3");
+		StringWriter out = new StringWriter();
+		exporter.writeRow(out, issue, categories(), assignees(), true);
+		String csv = out.toString();
+		assertThat(csv).startsWith("10,'=cmd|'/c calc'!A1,"); // leading '=' prefixed with '
+		assertThat(csv).contains(",'@SUM(1+1),"); // leading '@' prefixed with '
+		assertThat(csv).endsWith(",'-2+3\r\n"); // leading '-' prefixed with '
+	}
+
 	// --- helpers ---
 
 	private Issue newIssue(Long id, String title) throws Exception {

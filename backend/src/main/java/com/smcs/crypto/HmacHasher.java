@@ -32,6 +32,9 @@ public class HmacHasher {
 			throw new IllegalStateException("smcs.crypto.hmac-key must be set");
 		}
 		this.keyBytes = hmacKey.getBytes(StandardCharsets.UTF_8);
+		if (keyBytes.length < 32) {
+			throw new IllegalStateException("smcs.crypto.hmac-key must be at least 32 bytes (HMAC-SHA256)");
+		}
 	}
 
 	/** Normalize to digits only, then HMAC-SHA256 → lowercase hex (64 chars). */

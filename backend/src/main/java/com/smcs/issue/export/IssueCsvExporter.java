@@ -67,10 +67,18 @@ public class IssueCsvExporter {
 		out.write(sb.toString());
 	}
 
-	/** RFC 4180: quote if value contains comma, quote, CR, or LF; double internal quotes. */
+	/**
+	 * RFC 4180: quote if value contains comma, quote, CR, or LF; double internal quotes.
+	 * Also neutralizes CSV/Excel formula injection — a cell starting with {@code = + - @}, TAB,
+	 * or CR can execute as a formula when the file is opened in a spreadsheet, so it is prefixed
+	 * with a single quote to force text (OWASP CSV injection guidance).
+	 */
 	private String escape(String value) {
 		if (value == null || value.isEmpty()) {
 			return "";
+		}
+		if (isFormulaTrigger(value.charAt(0))) {
+			value = "'" + value;
 		}
 		boolean needsQuote = value.indexOf(',') >= 0
 				|| value.indexOf('"') >= 0
@@ -80,6 +88,10 @@ public class IssueCsvExporter {
 			return value;
 		}
 		return "\"" + value.replace("\"", "\"\"") + "\"";
+	}
+
+	private boolean isFormulaTrigger(char c) {
+		return c == '=' || c == '+' || c == '-' || c == '@' || c == '\t' || c == '\r';
 	}
 
 	private String joinCategory(Issue issue, Map<Long, String> names) {
